@@ -47,8 +47,9 @@ A single scrolling page, with the RSVP / pass gated behind a lightweight guest l
 6. **Interactive Directions** — the centerpiece (§5).
 7. **RSVP** — name search → PIN → attending + headcount → QR pass + table (§6, §7).
 8. **Your Pass** — return login to view QR, headcount, table.
-9. **Gift note** — a gentle message about gifts.
-10. **Gift Registry** — **curated item list + registry/cash links** (Shopee/Lazada/Amazon, GCash/bank).
+9. **Gift note** — a gentle message about gifts; **monetary gifts are warmly welcome**.
+10. **Gift Registry** — **curated item list + registry/cash links** (Shopee/Lazada/Amazon, plus
+    **monetary gift** options: GCash/bank).
 
 ## 5. Interactive map (no Google redirect)
 
