@@ -31,7 +31,9 @@ export const content = {
     callTime: "Kindly arrive by 1:30 PM at St. Benedict Parish.",
     dressCode: "Dress code: soft pastels (blush, sage, cream).",
     note: "Please proceed to the reserved front pews before the rite begins.",
-    list: [] as Godparent[], // e.g. [{ name: "Juan Dela Cruz", role: "Ninong" }]
+    list: [
+      { role: "Ninong", name: "Tito Gelo" },
+    ] as Godparent[],
   },
   directions: {
     origin: "WalterMart Santa Rosa",
