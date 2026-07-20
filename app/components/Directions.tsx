@@ -1,5 +1,5 @@
 import Section from "./Section";
-import RouteSketch from "./RouteSketch";
+import MapView from "./map/MapView";
 import content from "../content";
 
 export default function Directions() {
@@ -7,11 +7,12 @@ export default function Directions() {
   return (
     <Section id="directions" eyebrow="Getting There" title="Maps & Directions">
       <p className="text-sm text-ink-soft">
-        {d.origin} → {d.destination} · {d.distance}. A full interactive map is coming; for now,
-        follow the landmarks below — they avoid the far U-turn.
+        {d.origin} → {d.destination} · {d.distance}. Pan and zoom the map below (tap{" "}
+        <span className="font-semibold">Satellite</span> / <span className="font-semibold">Streets</span>), then follow
+        the landmark steps — they keep you off the far U-turn.
       </p>
       <div className="mt-6">
-        <RouteSketch />
+        <MapView />
       </div>
       <ol className="mx-auto mt-6 max-w-md space-y-2 text-left text-sm">
         {d.steps.map((s, i) => (
