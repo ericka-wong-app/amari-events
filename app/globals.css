@@ -1,16 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --cream: #fdf6f2;
-  --blush: #fbeef0;
-  --blush-2: #f7dde1;
-  --rose: #d17b83;
-  --rose-deep: #c96a72;
-  --sage: #9db89a;
-  --ink: #5b4a4d;
-  --ink-soft: #8a7478;
-  --gold: #e6b800;
-  --gingham: rgba(224, 150, 157, 0.22);
+  --cream: #fff7f3;
+  --blush: #ffe8ee;
+  --blush-2: #ffd4e0;
+  --rose: #f0819a;
+  --rose-deep: #e15f81;
+  --mint: #9fe0cf;
+  --mint-deep: #4fb89b;
+  --butter: #ffe08a;
+  --peach: #ffc4a3;
+  --grape: #cdb4f0;
+  --sky: #bcdcf5;
+  --ink: #6b4a56;
+  --ink-soft: #a07f8b;
+  --gold: #f0b429;
 }
 
 @theme inline {
@@ -19,9 +23,15 @@
   --color-blush-2: var(--blush-2);
   --color-rose: var(--rose);
   --color-rose-deep: var(--rose-deep);
-  --color-sage: var(--sage);
+  --color-mint: var(--mint);
+  --color-mint-deep: var(--mint-deep);
+  --color-butter: var(--butter);
+  --color-peach: var(--peach);
+  --color-grape: var(--grape);
+  --color-sky: var(--sky);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
+  --font-display: var(--font-display);
   --font-script: var(--font-script);
   --font-sans: var(--font-body);
 }
@@ -31,30 +41,51 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Gingham check: two overlapping translucent grids darken at intersections */
+/* Playful sky: soft multi-pastel wash + gentle polka dots */
 body {
   font-family: var(--font-body), system-ui, sans-serif;
   background-color: var(--cream);
   background-image:
-    repeating-linear-gradient(0deg, var(--gingham) 0 22px, transparent 22px 44px),
-    repeating-linear-gradient(90deg, var(--gingham) 0 22px, transparent 22px 44px);
+    radial-gradient(circle at 12% 10%, rgba(205, 180, 240, 0.18), transparent 40%),
+    radial-gradient(circle at 88% 8%, rgba(188, 220, 245, 0.22), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(159, 224, 207, 0.18), transparent 45%),
+    radial-gradient(rgba(240, 129, 154, 0.10) 1.6px, transparent 1.7px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 22px 22px;
   background-attachment: fixed;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-  }
+h1, h2, h3, .font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
 }
 
+/* ---- Playful motion ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .anim-pop { animation: pop 0.6s cubic-bezier(0.22, 1.5, 0.4, 1) both; }
+  .anim-float { animation: floaty 6s ease-in-out infinite; }
+  .anim-float-slow { animation: floaty 9s ease-in-out infinite; }
+  .anim-wiggle { animation: wiggle 3.5s ease-in-out infinite; }
+  .anim-rise { animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .hover-boop { transition: transform 0.18s cubic-bezier(0.22, 1.5, 0.4, 1); }
+  .hover-boop:hover { transform: translateY(-3px) scale(1.03) rotate(-1deg); }
+  .hover-boop:active { transform: scale(0.96); }
+
+  @keyframes pop { from { opacity: 0; transform: scale(0.4) rotate(-6deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+  @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
+  @keyframes wiggle { 0%, 92%, 100% { transform: rotate(-3deg); } 96% { transform: rotate(3deg); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Scrapbook tilt helpers */
+.tilt-l { transform: rotate(-1.6deg); }
+.tilt-r { transform: rotate(1.6deg); }
+
 :where(a, button):focus-visible {
-  outline: 2px solid var(--rose-deep);
+  outline: 3px solid var(--rose-deep);
   outline-offset: 3px;
-  border-radius: 6px;
+  border-radius: 12px;
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import RsvpFlow from "./RsvpFlow";
+import FloatingHearts from "../components/FloatingHearts";
 import { myPass, type Pass } from "./actions";
 import content from "../content";
 
@@ -18,6 +19,7 @@ export default async function RsvpPage() {
   }
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-6 py-14">
+      <FloatingHearts />
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-rose-deep/80">
         {content.celebrant} · {content.dateLong}
       </p>

@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
-import { Dancing_Script, Nunito } from "next/font/google";
+import { Baloo_2, Dancing_Script, Nunito } from "next/font/google";
 import "./globals.css";
 
+const display = Baloo_2({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 const script = Dancing_Script({
   variable: "--font-script",
   subsets: ["latin"],
@@ -10,7 +15,7 @@ const script = Dancing_Script({
 const body = Nunito({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["300", "400", "600", "700"],
+  weight: ["400", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -21,7 +26,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${script.variable} ${body.variable}`}>
+    <html
+      lang="en"
+      className={`${display.variable} ${script.variable} ${body.variable}`}
+    >
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
