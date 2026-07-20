@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Section from "./Section";
 import content from "../content";
 
@@ -7,6 +8,12 @@ export default function GiftRegistry() {
     <Section id="gifts" eyebrow="With Love" title="Gifts & Registry">
       <div className="rounded-3xl border border-blush-2 bg-white/55 px-6 py-6">
         <p className="mx-auto max-w-md text-sm leading-relaxed text-ink-soft">{note}</p>
+        <Link
+          href="/gift"
+          className="hover-lift mt-4 inline-block rounded-full bg-rose px-6 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_-16px_rgba(183,110,125,0.9)]"
+        >
+          Send a monetary gift
+        </Link>
       </div>
       {items.length > 0 && (
         <ul className="mx-auto mt-6 grid max-w-sm gap-2 text-sm">

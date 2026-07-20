@@ -17,7 +17,10 @@ export async function GET() {
     if (error) {
       return NextResponse.json({ ok: false, stage: "query", error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ ok: true, guests: count ?? 0 });
+    // best-effort: null means the contributions table hasn't been created yet
+    const c = await sb.from("contributions").select("*", { count: "exact", head: true });
+    const contributions = c.error ? null : c.count ?? 0;
+    return NextResponse.json({ ok: true, guests: count ?? 0, contributions });
   } catch (e) {
     return NextResponse.json({ ok: false, stage: "init", error: (e as Error).message }, { status: 500 });
   }

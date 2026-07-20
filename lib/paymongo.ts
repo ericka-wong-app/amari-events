@@ -70,6 +70,15 @@ export async function getCheckoutSession(id: string): Promise<unknown> {
   return json.data;
 }
 
+// Real-time verification: ask PayMongo whether this session has a paid payment.
+export async function isCheckoutPaid(id: string): Promise<boolean> {
+  const data = (await getCheckoutSession(id)) as {
+    attributes?: { payments?: { attributes?: { status?: string } }[] };
+  };
+  const payments = data?.attributes?.payments ?? [];
+  return payments.some((p) => p?.attributes?.status === "paid");
+}
+
 // Verify a PayMongo webhook signature. Header format:
 // "t=<unix>,te=<test-sig>,li=<live-sig>". Use `li` in live mode.
 export function verifyWebhookSignature(
