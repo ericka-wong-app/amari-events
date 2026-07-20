@@ -11,11 +11,10 @@ export type Place = {
 
 export const OKAIRI: LatLng = [14.292292, 121.109198];
 export const WALTERMART: LatLng = [14.288192, 121.094504];
-
-// null until the host shares the St. Benedict Parish pin.
-export const ST_BENEDICT: LatLng | null = null;
+export const ST_BENEDICT: LatLng = [14.2395967, 121.0408546];
 
 export const PLACES: Place[] = [
+  { key: "parish", name: "St. Benedict Parish", sub: "Ceremony · 2:00 PM", pos: ST_BENEDICT, kind: "ceremony" },
   { key: "wm", name: "WalterMart Santa Rosa", sub: "Starting point", pos: WALTERMART, kind: "start" },
   { key: "mcdo", name: "Shell + McDonald's", sub: "Amethyst Rd traffic light", pos: [14.293639, 121.104947], kind: "landmark" },
   { key: "okairi", name: "Okairi", sub: "Reception · B2 L10 Ph 1, La Joya Subd.", pos: OKAIRI, kind: "destination" },
