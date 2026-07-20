@@ -83,26 +83,43 @@ correct route** instead.
 
 ## 7. Auth model (no email, no SMS)
 
-- **Guest:** search **name** (matches display name + **nicknames/alt spellings**,
+- **Guest (per person):** search **name** (matches display name + **nicknames/alt spellings**,
   case-insensitive). First visit → set a **4-digit PIN** + pick a **security question & answer**.
-  Return → name + PIN. Forgot PIN → answer security question → reset.
+  Return → name + PIN. Forgot PIN → answer security question → reset. **Each person has their own
+  login, PIN, and QR pass.**
 - **Admin:** **username + password**, with the same security-question reset.
 - **Storage:** PINs, admin password, and security answers are **hashed** (bcrypt/argon2).
   Sessions are signed cookies. No third-party auth provider needed.
 
+### 7a. Grouping (main guest)
+
+Individual guests are **organized under a group / "main guest"** (e.g. *Wong Family*). Grouping is
+an **admin-side organizing layer**, not a shared login: every person still logs in and gets a QR on
+their own, but the admin sees them **nested under their main guest** for easy navigation, and can
+**apply a table to a whole group at once**. This cleanly handles several people from one family
+each logging in. A guest may be **standalone** (no group). Guests optionally see "*Part of the
+&lt;main guest&gt; invite*" on their pass.
+
 ## 8. Admin (private, password-protected)
 
+- **Group management:** create / rename / delete **groups (main guests)**; assign guests to a group;
+  **set a table for the whole group at once**.
 - **Guest management:** add / edit / **delete**; fields = display name, **nicknames/alt names**,
-  **max pax**, **table number**, godparent role (ninong/ninang/none), notes.
+  **max pax**, **table number**, **group** (main guest), godparent role (ninong/ninang/none), notes.
   (Host adds guests in-app; optional CSV paste-import as a nice-to-have.)
+- **Grouped, navigable list:** guests shown **nested under their main guest**, with a **search box**
+  (name/nickname) and **status filters** (pending / attending / declined / checked-in). Each group
+  shows a **rollup** (members, confirmed pax). This is the "easily navigate" view.
 - **Live RSVP dashboard:** counts of invited / attending / declined / pending, **total confirmed
-  headcount**, and a searchable guest list with status.
+  headcount**.
 - **Check-in (event day):** phone-camera **QR scanner** *or* **manual name search**; marks arrived,
-  shows table, supports undo. Usable by host or a door helper.
+  shows table + group, supports undo. Usable by host or a door helper.
 
 ## 9. Data model (Supabase Postgres)
 
-- `guests` — id, display_name, alt_names[], max_pax, table_number, godparent_role, notes, created_at
+- `groups` — id, name (main guest / family label), notes, created_at
+- `guests` — id, **group_id (FK → groups, nullable)**, display_name, alt_names[], max_pax,
+  table_number, godparent_role, notes, created_at
 - `guest_auth` — guest_id, pin_hash, security_question, security_answer_hash
 - `rsvps` — guest_id, status(attending|declined|pending), confirmed_pax, responded_at
 - `checkins` — guest_id, checked_in_at, checked_in_by, method(scan|manual)
@@ -129,7 +146,8 @@ the Supabase **service-role key server-side only** — never exposed to the brow
    sections, intro reveal. → first live Vercel URL.
 2. **Phase 2 — Interactive map:** Leaflet, route polylines, landmarks, avoid-cue, turn list.
 3. **Phase 3 — RSVP + guest auth + Your Pass + QR:** Supabase, name search, PIN, headcount, QR.
-4. **Phase 4 — Admin + check-in:** guest CRUD, RSVP dashboard, QR scanner + manual check-in.
+4. **Phase 4 — Admin + check-in:** groups + guest CRUD, grouped/searchable navigation, RSVP
+   dashboard, QR scanner + manual check-in.
 
 ## 12. Assets the host provides
 
