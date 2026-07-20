@@ -27,31 +27,31 @@ export type CheckoutResult = { id: string; checkoutUrl: string };
 // Creates a hosted checkout session (GCash / card / Maya). Creating a session
 // does NOT charge — the guest pays on PayMongo's hosted page.
 export async function createCheckoutSession(input: CheckoutInput): Promise<CheckoutResult> {
+  const attributes: Record<string, unknown> = {
+    line_items: [
+      {
+        name: input.description,
+        amount: Math.round(input.amountPhp * 100), // centavos
+        currency: "PHP",
+        quantity: 1,
+      },
+    ],
+    payment_method_types: ["gcash", "card", "paymaya"],
+    description: input.description,
+    reference_number: input.reference,
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+    send_email_receipt: false,
+    show_line_items: true,
+  };
+  // PayMongo rejects an empty metadata object — only include it when non-empty.
+  if (input.metadata && Object.keys(input.metadata).length > 0) {
+    attributes.metadata = input.metadata;
+  }
   const res = await fetch(`${BASE}/checkout_sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: authHeader() },
-    body: JSON.stringify({
-      data: {
-        attributes: {
-          line_items: [
-            {
-              name: input.description,
-              amount: Math.round(input.amountPhp * 100), // centavos
-              currency: "PHP",
-              quantity: 1,
-            },
-          ],
-          payment_method_types: ["gcash", "card", "paymaya"],
-          description: input.description,
-          reference_number: input.reference,
-          success_url: input.successUrl,
-          cancel_url: input.cancelUrl,
-          send_email_receipt: false,
-          show_line_items: true,
-          metadata: input.metadata ?? {},
-        },
-      },
-    }),
+    body: JSON.stringify({ data: { attributes } }),
   });
   const json = await res.json();
   if (!res.ok) {
