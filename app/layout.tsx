@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Baloo_2, Dancing_Script, Nunito } from "next/font/google";
+import { Cormorant_Garamond, Dancing_Script, Nunito } from "next/font/google";
 import "./globals.css";
 
-const display = Baloo_2({
+const display = Cormorant_Garamond({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
 });
 const script = Dancing_Script({
   variable: "--font-script",
@@ -15,7 +16,7 @@ const script = Dancing_Script({
 const body = Nunito({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "600", "700", "800"],
+  weight: ["300", "400", "600", "700"],
 });
 
 export const metadata: Metadata = {

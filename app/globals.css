@@ -1,20 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --cream: #fff7f3;
-  --blush: #ffe8ee;
-  --blush-2: #ffd4e0;
-  --rose: #f0819a;
-  --rose-deep: #e15f81;
-  --mint: #9fe0cf;
-  --mint-deep: #4fb89b;
-  --butter: #ffe08a;
-  --peach: #ffc4a3;
-  --grape: #cdb4f0;
-  --sky: #bcdcf5;
-  --ink: #6b4a56;
-  --ink-soft: #a07f8b;
-  --gold: #f0b429;
+  --cream: #fdf7f4;
+  --blush: #f7e7ea;
+  --blush-2: #efd3d9;
+  --rose: #cf8a97;
+  --rose-deep: #b76e7d;
+  --sage: #a9bfa6;
+  --sage-deep: #7f9a7c;
+  --taupe: #b9a6a0;
+  --ink: #6d5860;
+  --ink-soft: #a08c92;
+  --gold: #d8b26a;
 }
 
 @theme inline {
@@ -23,14 +20,12 @@
   --color-blush-2: var(--blush-2);
   --color-rose: var(--rose);
   --color-rose-deep: var(--rose-deep);
-  --color-mint: var(--mint);
-  --color-mint-deep: var(--mint-deep);
-  --color-butter: var(--butter);
-  --color-peach: var(--peach);
-  --color-grape: var(--grape);
-  --color-sky: var(--sky);
+  --color-sage: var(--sage);
+  --color-sage-deep: var(--sage-deep);
+  --color-taupe: var(--taupe);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
+  --color-gold: var(--gold);
   --font-display: var(--font-display);
   --font-script: var(--font-script);
   --font-sans: var(--font-body);
@@ -41,38 +36,36 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Playful sky: soft multi-pastel wash + gentle polka dots */
+/* Dreamy wash: soft blush glow + the faintest gingham nod to the peg */
 body {
   font-family: var(--font-body), system-ui, sans-serif;
   background-color: var(--cream);
   background-image:
-    radial-gradient(circle at 12% 10%, rgba(205, 180, 240, 0.18), transparent 40%),
-    radial-gradient(circle at 88% 8%, rgba(188, 220, 245, 0.22), transparent 42%),
-    radial-gradient(circle at 50% 100%, rgba(159, 224, 207, 0.18), transparent 45%),
-    radial-gradient(rgba(240, 129, 154, 0.10) 1.6px, transparent 1.7px);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 22px 22px;
+    radial-gradient(120% 90% at 50% -8%, #fdeef1 0%, var(--cream) 55%),
+    radial-gradient(90% 70% at 100% 100%, rgba(169, 191, 166, 0.10), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(207, 138, 151, 0.045) 0 20px, transparent 20px 40px),
+    repeating-linear-gradient(90deg, rgba(207, 138, 151, 0.045) 0 20px, transparent 20px 40px);
   background-attachment: fixed;
 }
 
-h1, h2, h3, .font-display {
-  font-family: var(--font-display), system-ui, sans-serif;
+h1, h2, h3 {
+  font-family: var(--font-display), Georgia, serif;
 }
 
-/* ---- Playful motion ---- */
+/* ---- Gentle, dreamy motion ---- */
 @media (prefers-reduced-motion: no-preference) {
-  .anim-pop { animation: pop 0.6s cubic-bezier(0.22, 1.5, 0.4, 1) both; }
-  .anim-float { animation: floaty 6s ease-in-out infinite; }
-  .anim-float-slow { animation: floaty 9s ease-in-out infinite; }
-  .anim-wiggle { animation: wiggle 3.5s ease-in-out infinite; }
-  .anim-rise { animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  .hover-boop { transition: transform 0.18s cubic-bezier(0.22, 1.5, 0.4, 1); }
-  .hover-boop:hover { transform: translateY(-3px) scale(1.03) rotate(-1deg); }
-  .hover-boop:active { transform: scale(0.96); }
+  .anim-fade { animation: fadeIn 1.2s ease both; }
+  .anim-fade-up { animation: fadeUp 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .anim-float { animation: drifty 9s ease-in-out infinite; }
+  .anim-float-slow { animation: drifty 13s ease-in-out infinite; }
+  .anim-sway { animation: sway 7s ease-in-out infinite; transform-origin: top center; }
+  .hover-lift { transition: transform 0.4s ease, box-shadow 0.4s ease; }
+  .hover-lift:hover { transform: translateY(-4px); }
 
-  @keyframes pop { from { opacity: 0; transform: scale(0.4) rotate(-6deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
-  @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
-  @keyframes wiggle { 0%, 92%, 100% { transform: rotate(-3deg); } 96% { transform: rotate(3deg); } }
-  @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes drifty { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-10px) rotate(1deg); } }
+  @keyframes sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -80,12 +73,11 @@ h1, h2, h3, .font-display {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* Scrapbook tilt helpers */
-.tilt-l { transform: rotate(-1.6deg); }
-.tilt-r { transform: rotate(1.6deg); }
+.tilt-l { transform: rotate(-1deg); }
+.tilt-r { transform: rotate(1deg); }
 
 :where(a, button):focus-visible {
-  outline: 3px solid var(--rose-deep);
+  outline: 2px solid var(--rose-deep);
   outline-offset: 3px;
-  border-radius: 12px;
+  border-radius: 10px;
 }
