@@ -22,5 +22,11 @@ export async function GET(req: Request) {
     .filter((c) => c.status === "paid")
     .reduce((s, c) => s + (c.amount_php ?? 0), 0);
 
-  return NextResponse.json({ ok: true, count: data?.length ?? 0, paidTotal, contributions: data });
+  return NextResponse.json({
+    ok: true,
+    webhookConfigured: Boolean(process.env.PAYMONGO_WEBHOOK_SECRET),
+    count: data?.length ?? 0,
+    paidTotal,
+    contributions: data,
+  });
 }
