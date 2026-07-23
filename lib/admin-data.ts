@@ -206,6 +206,12 @@ export async function setGodparentRole(memberId: string, role: "Ninong" | "Ninan
   if (error) throw new Error(error.message);
 }
 
+export async function setMemberOnline(memberId: string, isOnline: boolean): Promise<void> {
+  const sb = supabaseAdmin();
+  const { error } = await sb.from("guests").update({ is_online: isOnline }).eq("id", memberId);
+  if (error) throw new Error(error.message);
+}
+
 export type FlatMember = {
   id: string;
   displayName: string;

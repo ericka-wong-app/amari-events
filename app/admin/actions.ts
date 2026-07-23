@@ -11,6 +11,7 @@ import {
   deleteMember,
   createInvite,
   setGodparentRole,
+  setMemberOnline,
 } from "@/lib/admin-data";
 
 export async function adminLogin(username: string, password: string): Promise<{ ok: boolean; error?: string }> {
@@ -67,4 +68,7 @@ export async function setRole(memberId: string, role: "Ninong" | "Ninang" | null
   return wrap(async () => {
     await setGodparentRole(memberId, role);
   });
+}
+export async function toggleOnline(memberId: string, isOnline: boolean): Promise<Res> {
+  return wrap(() => setMemberOnline(memberId, isOnline));
 }

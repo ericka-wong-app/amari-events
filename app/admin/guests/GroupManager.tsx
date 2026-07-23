@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Group, Member } from "@/lib/admin-data";
-import { makeInvite, editGroup, delGroup, newMember, editMember, delMember } from "../actions";
+import { makeInvite, editGroup, delGroup, newMember, editMember, delMember, toggleOnline } from "../actions";
 
 const inp = "w-full rounded-md border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const lbl = "block text-[0.62rem] font-semibold uppercase tracking-wide text-ink-soft";
@@ -175,12 +175,19 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
               onDelete={() => run(async () => { const r = await delMember(m.id); if (r.ok) setEditId(null); return r; })}
             />
           ) : (
-            <div key={m.id} className="flex items-center justify-between rounded-md border border-blush-2/70 px-3 py-2 text-sm">
-              <span className="text-ink">{m.displayName}
+            <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-blush-2/70 px-3 py-2 text-sm">
+              <span className="min-w-0 truncate text-ink">{m.displayName}
                 {m.godparentRole && <span className="ml-2 rounded-full bg-blush px-2 py-0.5 text-[0.6rem] font-semibold text-rose-deep">{m.godparentRole}</span>}
-                {m.isOnline && <span className="ml-2 rounded-full bg-sky/50 px-2 py-0.5 text-[0.6rem] font-semibold text-ink-soft">Online</span>}
               </span>
-              <button onClick={() => setEditId(m.id)} className="text-xs font-semibold text-rose-deep">Edit</button>
+              <div className="flex flex-none items-center gap-2">
+                <span className="text-[0.62rem] uppercase tracking-wide text-ink-soft">Online</span>
+                <button type="button" role="switch" aria-checked={m.isOnline} disabled={pending}
+                  onClick={() => run(() => toggleOnline(m.id, !m.isOnline))} title="Online (from abroad)"
+                  className={`relative inline-flex h-5 w-9 flex-none items-center rounded-full transition ${m.isOnline ? "bg-sky" : "bg-blush-2"}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${m.isOnline ? "translate-x-4" : "translate-x-0.5"}`} />
+                </button>
+                <button onClick={() => setEditId(m.id)} className="text-xs font-semibold text-rose-deep">Edit</button>
+              </div>
             </div>
           ))}
           {group.members.length === 0 && <p className="text-sm text-ink-soft">No people yet.</p>}
@@ -205,7 +212,7 @@ function MemberEditor({ member, pending, onSave, onCancel, onDelete }: {
   const [displayName, setDisplayName] = useState(member.displayName);
   const [alt, setAlt] = useState(member.altNames.join(", "));
   const [role, setRole] = useState<string>(member.godparentRole ?? "");
-  const [online, setOnline] = useState(member.isOnline);
+  const online = member.isOnline; // toggled from the row; preserved on save
   return (
     <div className="rounded-md border-2 border-rose/40 bg-white px-3 py-3">
       <div className="grid gap-2 sm:grid-cols-3">
@@ -217,10 +224,6 @@ function MemberEditor({ member, pending, onSave, onCancel, onDelete }: {
           </select>
         </div>
       </div>
-      <label className="mt-3 flex items-center gap-2 text-sm text-ink">
-        <input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} className="h-4 w-4 accent-rose" />
-        Online (joining from abroad — no table/QR)
-      </label>
       <div className="mt-3 flex gap-2">
         <button disabled={pending} onClick={() => onSave({ displayName, altNames: alt.split(",").map((s) => s.trim()).filter(Boolean), godparentRole: (role || null) as "Ninong" | "Ninang" | null, isOnline: online })} className={btn}>Save</button>
         <button onClick={onCancel} className={btnGhost}>Cancel</button>
