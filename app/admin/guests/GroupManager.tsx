@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Group, Member } from "@/lib/admin-data";
-import { makeInvite, editGroup, delGroup, newMember, editMember, delMember, toggleOnline } from "../actions";
+import { makeInvite, editGroup, delGroup, newMember, editMember, delMember, toggleOnline, setInviteRsvp } from "../actions";
 
 const inp = "w-full rounded-md border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const lbl = "block text-[0.62rem] font-semibold uppercase tracking-wide text-ink-soft";
@@ -147,6 +147,14 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
   const [table, setTable] = useState(group.tableNumber ?? "");
   const [memberName, setMemberName] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
+  const [showAttending, setShowAttending] = useState(false);
+  const [rsvpPax, setRsvpPax] = useState(group.confirmedPax && group.confirmedPax > 0 ? group.confirmedPax : group.maxPax);
+  const [rsvpAtt, setRsvpAtt] = useState<"both" | "reception">(group.attendance === "reception" ? "reception" : "both");
+
+  const rsvpLabel =
+    group.rsvpStatus === "attending"
+      ? `Attending — ${group.confirmedPax ?? 0} coming${group.attendance === "reception" ? " (reception only)" : group.attendance === "both" ? " (ceremony + reception)" : ""}`
+      : group.rsvpStatus === "declined" ? "Declined" : "Pending";
 
   return (
     <div>
@@ -163,6 +171,34 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
           <button disabled={pending} onClick={() => run(() => editGroup(group.id, { name, maxPax: pax, tableNumber: table || null }))} className={btn}>Save</button>
           <button disabled={pending} onClick={() => { if (confirm(`Delete "${group.name}" and everyone in it?`)) { run(() => delGroup(group.id)); onBack(); } }} className="ml-auto rounded-md border border-rose/40 px-4 py-2 text-sm font-semibold text-rose-deep">Delete invite</button>
         </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-blush-2 bg-white px-4 py-4">
+        <p className={lbl}>RSVP (set manually)</p>
+        <p className="mt-1 text-sm text-ink">Current: <strong className="text-rose-deep">{rsvpLabel}</strong></p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button onClick={() => setShowAttending((v) => !v)} className={btnGhost}>Mark attending…</button>
+          <button disabled={pending} onClick={() => run(() => setInviteRsvp(group.id, "declined", 0, null))} className={btnGhost}>Mark declined</button>
+          <button disabled={pending} onClick={() => run(() => setInviteRsvp(group.id, "pending", 0, null))} className={btnGhost}>Reset to pending</button>
+        </div>
+        {showAttending && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <div><span className={lbl}>Coming (pax)</span>
+              <select value={rsvpPax} onChange={(e) => setRsvpPax(Number(e.target.value))} className={inp}>
+                {Array.from({ length: group.maxPax }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            <div><span className={lbl}>Attendance</span>
+              <select value={rsvpAtt} onChange={(e) => setRsvpAtt(e.target.value as "both" | "reception")} className={inp}>
+                <option value="both">Ceremony + Reception</option>
+                <option value="reception">Reception only</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button disabled={pending} onClick={() => run(async () => { const r = await setInviteRsvp(group.id, "attending", rsvpPax, rsvpAtt); if (r.ok) setShowAttending(false); return r; })} className={btn}>Confirm attending</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 rounded-lg border border-blush-2 bg-white px-4 py-4">

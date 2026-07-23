@@ -232,6 +232,24 @@ export async function setMemberOnline(memberId: string, isOnline: boolean): Prom
   if (error) throw new Error(error.message);
 }
 
+// Host manually sets an invite's RSVP (e.g. a guest told them in person).
+export async function setGroupRsvpAdmin(
+  groupId: string,
+  status: "attending" | "declined" | "pending",
+  confirmedPax: number,
+  attendance: "both" | "reception" | null
+): Promise<void> {
+  const sb = supabaseAdmin();
+  const row =
+    status === "attending"
+      ? { rsvp_status: "attending", confirmed_pax: Math.max(1, confirmedPax), attendance: attendance ?? "both", responded_at: new Date().toISOString() }
+      : status === "declined"
+        ? { rsvp_status: "declined", confirmed_pax: 0, attendance: null, responded_at: new Date().toISOString() }
+        : { rsvp_status: "pending", confirmed_pax: null, attendance: null, responded_at: null };
+  const { error } = await sb.from("groups").update(row).eq("id", groupId);
+  if (error) throw new Error(error.message);
+}
+
 export type FlatMember = {
   id: string;
   displayName: string;
