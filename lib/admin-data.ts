@@ -21,6 +21,7 @@ export type Group = {
   rsvpStatus: "attending" | "declined" | "pending";
   confirmedPax: number | null;
   attendance: Attendance;
+  isOnline: boolean;
   members: Member[];
 };
 
@@ -54,11 +55,12 @@ type GroupRow = {
   rsvp_status: string;
   confirmed_pax: number | null;
   attendance: string | null;
+  is_online: boolean | null;
   guests: MemberRow[] | null;
 };
 
 const SELECT =
-  "id, name, max_pax, table_number, rsvp_status, confirmed_pax, attendance, guests(id, display_name, alt_names, godparent_role, checkins(checked_in_at))";
+  "id, name, max_pax, table_number, rsvp_status, confirmed_pax, attendance, is_online, guests(id, display_name, alt_names, godparent_role, checkins(checked_in_at))";
 
 function toGroup(r: GroupRow): Group {
   return {
@@ -69,6 +71,7 @@ function toGroup(r: GroupRow): Group {
     rsvpStatus: (r.rsvp_status as Group["rsvpStatus"]) ?? "pending",
     confirmedPax: r.confirmed_pax,
     attendance: (r.attendance as Group["attendance"]) ?? null,
+    isOnline: Boolean(r.is_online),
     members: (r.guests ?? [])
       .map((m) => ({
         id: m.id,
@@ -116,12 +119,17 @@ export async function createGroup(name: string, maxPax: number): Promise<string>
 
 export async function updateGroup(
   id: string,
-  fields: { name: string; maxPax: number; tableNumber: string | null }
+  fields: { name: string; maxPax: number; tableNumber: string | null; isOnline: boolean }
 ): Promise<void> {
   const sb = supabaseAdmin();
   const { error } = await sb
     .from("groups")
-    .update({ name: fields.name.trim(), max_pax: Math.max(1, fields.maxPax), table_number: fields.tableNumber?.trim() || null })
+    .update({
+      name: fields.name.trim(),
+      max_pax: Math.max(1, fields.maxPax),
+      table_number: fields.tableNumber?.trim() || null,
+      is_online: fields.isOnline,
+    })
     .eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -170,14 +178,15 @@ export async function createInvite(
   name: string,
   maxPax: number,
   tableNumber: string | null,
-  memberNames: string[]
+  memberNames: string[],
+  isOnline: boolean
 ): Promise<void> {
   const n = name.trim();
   if (!n) throw new Error("Invite name is required.");
   const sb = supabaseAdmin();
   const { data: g, error } = await sb
     .from("groups")
-    .insert({ name: n, max_pax: Math.max(1, maxPax), table_number: tableNumber?.trim() || null })
+    .insert({ name: n, max_pax: Math.max(1, maxPax), table_number: tableNumber?.trim() || null, is_online: isOnline })
     .select("id")
     .single();
   if (error) throw new Error(error.message);

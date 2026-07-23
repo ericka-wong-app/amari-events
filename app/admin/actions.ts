@@ -45,7 +45,7 @@ function wrap(fn: () => Promise<void>): Promise<Res> {
 export async function newGroup(name: string, maxPax: number): Promise<Res> {
   return wrap(async () => { await createGroup(name, maxPax); });
 }
-export async function editGroup(id: string, fields: { name: string; maxPax: number; tableNumber: string | null }): Promise<Res> {
+export async function editGroup(id: string, fields: { name: string; maxPax: number; tableNumber: string | null; isOnline: boolean }): Promise<Res> {
   return wrap(() => updateGroup(id, fields));
 }
 export async function delGroup(id: string): Promise<Res> {
@@ -60,8 +60,8 @@ export async function editMember(id: string, fields: { displayName: string; altN
 export async function delMember(id: string): Promise<Res> {
   return wrap(() => deleteMember(id));
 }
-export async function makeInvite(name: string, maxPax: number, tableNumber: string | null, memberNames: string[]): Promise<Res> {
-  return wrap(() => createInvite(name, maxPax, tableNumber, memberNames));
+export async function makeInvite(name: string, maxPax: number, tableNumber: string | null, memberNames: string[], isOnline: boolean): Promise<Res> {
+  return wrap(() => createInvite(name, maxPax, tableNumber, memberNames, isOnline));
 }
 export async function setRole(memberId: string, role: "Ninong" | "Ninang" | null): Promise<Res> {
   return wrap(async () => {
