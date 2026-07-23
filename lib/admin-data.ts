@@ -241,6 +241,49 @@ export async function setMemberRsvpAdmin(
   if (error) throw new Error(error.message);
 }
 
+// --- Host / parent guest accounts (so the host can join the album too) ---
+const HOSTS_GROUP = "Hosts";
+
+async function ensureHostsGroupId(): Promise<string> {
+  const sb = supabaseAdmin();
+  const { data } = await sb.from("groups").select("id").eq("name", HOSTS_GROUP).maybeSingle();
+  if (data?.id) return data.id;
+  const { data: g, error } = await sb.from("groups").insert({ name: HOSTS_GROUP, max_pax: 10 }).select("id").single();
+  if (error) throw new Error(error.message);
+  return g.id;
+}
+
+export type HostGuest = { id: string; name: string };
+
+export async function createHostGuest(name: string): Promise<string> {
+  const n = name.trim();
+  if (!n) throw new Error("Name is required.");
+  const groupId = await ensureHostsGroupId();
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from("guests")
+    .insert({ group_id: groupId, display_name: n, max_pax: 1, rsvp_status: "attending", attendance: "both", rsvp_at: new Date().toISOString() })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+export async function listHostGuests(): Promise<HostGuest[]> {
+  const sb = supabaseAdmin();
+  const { data: g } = await sb.from("groups").select("id").eq("name", HOSTS_GROUP).maybeSingle();
+  if (!g?.id) return [];
+  const { data } = await sb.from("guests").select("id, display_name").eq("group_id", g.id).order("display_name");
+  return ((data ?? []) as { id: string; display_name: string }[]).map((r) => ({ id: r.id, name: r.display_name }));
+}
+
+export async function deleteHostGuest(id: string): Promise<void> {
+  const sb = supabaseAdmin();
+  await sb.from("guest_auth").delete().eq("guest_id", id);
+  const { error } = await sb.from("guests").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export type FlatMember = {
   id: string;
   displayName: string;

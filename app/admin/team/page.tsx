@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { requireAdmin, listAdmins, type AdminUser } from "@/lib/admin";
+import { listHostGuests } from "@/lib/admin-data";
+import { makeInviteToken } from "@/lib/invite";
 import AdminShell from "../AdminShell";
 import TeamManager from "./TeamManager";
 
@@ -17,6 +19,13 @@ export default async function AdminTeamPage() {
     tableError = (e as Error).message;
   }
 
+  let hostGuests: { id: string; name: string; token: string }[] = [];
+  try {
+    hostGuests = (await listHostGuests()).map((h) => ({ ...h, token: makeInviteToken(h.id) }));
+  } catch {
+    hostGuests = [];
+  }
+
   return (
     <AdminShell title="Admins & Helpers" active="/admin/team">
       {tableError ? (
@@ -27,7 +36,7 @@ export default async function AdminTeamPage() {
 alter table admins add column if not exists created_at timestamptz not null default now();`}</pre>
         </div>
       ) : (
-        <TeamManager admins={admins} />
+        <TeamManager admins={admins} hostGuests={hostGuests} />
       )}
     </AdminShell>
   );

@@ -58,13 +58,17 @@ let communityEnsured = false;
 async function ensureCommunityBucket(): Promise<void> {
   if (communityEnsured) return;
   const sb = supabaseAdmin();
-  const { data } = await sb.storage.getBucket(COMMUNITY_BUCKET);
-  if (!data) {
-    await sb.storage.createBucket(COMMUNITY_BUCKET, {
+  const { data: buckets } = await sb.storage.listBuckets();
+  const exists = (buckets ?? []).some((b) => b.name === COMMUNITY_BUCKET);
+  if (!exists) {
+    const { error } = await sb.storage.createBucket(COMMUNITY_BUCKET, {
       public: true,
       fileSizeLimit: COMMUNITY_MAX_BYTES,
       allowedMimeTypes: COMMUNITY_ALLOWED,
     });
+    if (error && !/already exists/i.test(error.message)) {
+      throw new Error(`Could not set up the album storage: ${error.message}`);
+    }
   }
   communityEnsured = true;
 }

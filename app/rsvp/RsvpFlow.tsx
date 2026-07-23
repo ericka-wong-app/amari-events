@@ -292,7 +292,7 @@ function Badge({ children }: { children: React.ReactNode }) {
 function GodparentBanner({ role }: { role: "Ninong" | "Ninang" }) {
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-rose/40 bg-gradient-to-r from-blush/80 via-white to-blush/60 px-5 py-4 text-center shadow-[0_14px_36px_-24px_rgba(183,110,125,0.7)]">
-      <p className="text-3xl">🕊️</p>
+      <p className="text-3xl">✨</p>
       <p className="mt-1 text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/75">A special role in Amari&apos;s baptism</p>
       <p className="mt-1 font-script text-3xl leading-tight text-rose-deep">You&apos;re Amari&apos;s {role}</p>
       <p className="mt-1 text-xs text-ink-soft">Thank you for standing with Amari on this special day. 💕</p>
@@ -371,7 +371,7 @@ function GroupPanel({ meId, onChanged }: { meId: string; onChanged?: () => void 
               <div className="flex items-center justify-between gap-2">
                 <p className="min-w-0 truncate text-[0.95rem] font-semibold text-ink">
                   {m.name}{m.id === meId ? " (you)" : ""}
-                  {m.godparentRole && <span className="ml-1 font-normal text-rose-deep">· {m.godparentRole} 🕊️</span>}
+                  {m.godparentRole && <span className="ml-1 font-normal text-rose-deep">· {m.godparentRole} ✨</span>}
                 </p>
                 <MemberStatusChip m={m} />
               </div>
