@@ -81,22 +81,22 @@ export async function isCheckoutPaid(id: string): Promise<boolean> {
 }
 
 // Verify a PayMongo webhook signature. Header format:
-// "t=<unix>,te=<test-sig>,li=<live-sig>". Use `li` in live mode.
-export function verifyWebhookSignature(
-  rawBody: string,
-  signatureHeader: string | null,
-  mode: "live" | "test" = "live"
-): boolean {
+// "t=<unix>,te=<test-sig>,li=<live-sig>". We accept either the live or test
+// signature so the same endpoint works in both modes.
+export function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.PAYMONGO_WEBHOOK_SECRET;
   if (!secret || !signatureHeader) return false;
   const parts = Object.fromEntries(
     signatureHeader.split(",").map((p) => p.split("=") as [string, string])
   );
   const t = parts["t"];
-  const provided = mode === "live" ? parts["li"] : parts["te"];
-  if (!t || !provided) return false;
+  if (!t) return false;
   const expected = createHmac("sha256", secret).update(`${t}.${rawBody}`).digest("hex");
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const eq = (sig: string | undefined) => {
+    if (!sig) return false;
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    return a.length === b.length && timingSafeEqual(a, b);
+  };
+  return eq(parts["li"]) || eq(parts["te"]);
 }
