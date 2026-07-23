@@ -1,21 +1,23 @@
 import { supabaseAdmin } from "./supabase";
 
-export type Fund = { item: string; goalPhp: number; blurb: string };
+export type Fund = { item: string; goalPhp: number; blurb: string; imageUrl: string | null };
 export const FUND_DEFAULT: Fund = {
   item: "a special gift for baby Amari",
   goalPhp: 20000,
   blurb: "Chip in any amount — every peso brings us closer. 🎀",
+  imageUrl: null,
 };
 
 export async function getFund(): Promise<Fund> {
   try {
     const sb = supabaseAdmin();
-    const { data, error } = await sb.from("fund").select("item, goal_php, blurb").limit(1).maybeSingle();
+    const { data, error } = await sb.from("fund").select("item, goal_php, blurb, image_url").limit(1).maybeSingle();
     if (error || !data) return FUND_DEFAULT;
     return {
       item: data.item ?? FUND_DEFAULT.item,
       goalPhp: data.goal_php ?? 0,
       blurb: data.blurb ?? "",
+      imageUrl: data.image_url ?? null,
     };
   } catch {
     return FUND_DEFAULT;
@@ -25,11 +27,31 @@ export async function getFund(): Promise<Fund> {
 export async function updateFund(f: Fund): Promise<void> {
   const sb = supabaseAdmin();
   const { data } = await sb.from("fund").select("id").limit(1).maybeSingle();
-  const row = { item: f.item.trim(), goal_php: Math.max(0, Math.round(f.goalPhp)), blurb: f.blurb.trim() };
+  const row = {
+    item: f.item.trim(),
+    goal_php: Math.max(0, Math.round(f.goalPhp)),
+    blurb: f.blurb.trim(),
+    image_url: f.imageUrl?.trim() || null,
+  };
   const { error } = data?.id
     ? await sb.from("fund").update(row).eq("id", data.id)
     : await sb.from("fund").insert(row);
   if (error) throw new Error(error.message);
+}
+
+export async function claimGiftItem(id: string, name: string): Promise<{ ok: boolean; error?: string }> {
+  const claimer = name.trim();
+  if (!claimer) return { ok: false, error: "Please enter your name to claim." };
+  const sb = supabaseAdmin();
+  const { data: existing } = await sb.from("gift_items").select("claimed_by").eq("id", id).maybeSingle();
+  if (existing?.claimed_by) return { ok: false, error: "Sorry, this gift was just claimed by someone else." };
+  const { error } = await sb
+    .from("gift_items")
+    .update({ claimed_by: claimer, claimed_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("claimed_by", null);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 export type GiftItem = {

@@ -31,7 +31,11 @@ export type AdminStats = {
   declined: number;
   pending: number;
   confirmedPax: number;
+  inPersonPax: number;
+  onlinePax: number;
   people: number;
+  inPersonListed: number;
+  onlineListed: number;
   paidTotalPhp: number;
 };
 
@@ -96,13 +100,29 @@ export async function getStats(): Promise<AdminStats> {
   const sb = supabaseAdmin();
   const { data: paid } = await sb.from("contributions").select("amount_php").eq("status", "paid");
   const paidTotalPhp = (paid ?? []).reduce((s, r) => s + (r.amount_php ?? 0), 0);
+
+  const attending = groups.filter((g) => g.rsvpStatus === "attending");
+  const confirmedPax = attending.reduce((s, g) => s + (g.confirmedPax ?? 0), 0);
+  // Online = online members within attending groups (capped at that group's headcount).
+  const onlinePax = attending.reduce(
+    (s, g) => s + Math.min(g.confirmedPax ?? 0, g.members.filter((m) => m.isOnline).length),
+    0
+  );
+  const inPersonPax = Math.max(0, confirmedPax - onlinePax);
+
+  const allMembers = groups.flatMap((g) => g.members);
+
   return {
     groups: groups.length,
-    attending: groups.filter((g) => g.rsvpStatus === "attending").length,
+    attending: attending.length,
     declined: groups.filter((g) => g.rsvpStatus === "declined").length,
     pending: groups.filter((g) => g.rsvpStatus === "pending").length,
-    confirmedPax: groups.filter((g) => g.rsvpStatus === "attending").reduce((s, g) => s + (g.confirmedPax ?? 0), 0),
-    people: groups.reduce((s, g) => s + g.members.length, 0),
+    confirmedPax,
+    inPersonPax,
+    onlinePax,
+    people: allMembers.length,
+    inPersonListed: allMembers.filter((m) => !m.isOnline).length,
+    onlineListed: allMembers.filter((m) => m.isOnline).length,
     paidTotalPhp,
   };
 }

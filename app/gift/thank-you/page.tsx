@@ -79,7 +79,7 @@ export default async function ThankYou({
         </Link>
       </div>
 
-      <FundBar raisedPhp={raised} goalPhp={f.goalPhp} item={f.item} blurb={f.blurb} />
+      <FundBar raisedPhp={raised} goalPhp={f.goalPhp} item={f.item} blurb={f.blurb} imageUrl={f.imageUrl} />
     </main>
   );
 }

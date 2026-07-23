@@ -38,6 +38,16 @@ export default function GiftManager({
   const [item, setItem] = useState(fund.item);
   const [goal, setGoal] = useState(fund.goalPhp);
   const [blurb, setBlurb] = useState(fund.blurb);
+  const [fundImg, setFundImg] = useState<string | null>(fund.imageUrl);
+  const [fundUploading, setFundUploading] = useState(false);
+
+  async function onFundFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMsg(null);
+    setFundUploading(true);
+    try { setFundImg(await uploadImage(file)); } catch (ex) { setMsg((ex as Error).message); } finally { setFundUploading(false); }
+  }
 
   const refresh = () => router.refresh();
 
@@ -51,8 +61,22 @@ export default function GiftManager({
           <div className="sm:col-span-2"><span className={label}>We&apos;re raising for…</span><input value={item} onChange={(e) => setItem(e.target.value)} className={input} /></div>
           <div><span className={label}>Goal (₱)</span><input type="number" min={0} value={goal} onChange={(e) => setGoal(Number(e.target.value))} className={input} /></div>
           <div className="sm:col-span-2"><span className={label}>Blurb</span><input value={blurb} onChange={(e) => setBlurb(e.target.value)} className={input} /></div>
+          <div className="sm:col-span-2">
+            <span className={label}>Photo of the item (PNG or JPEG)</span>
+            <div className="mt-1 flex items-center gap-3">
+              {fundImg ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={fundImg} alt="" className="h-16 w-16 rounded-lg object-cover" />
+              ) : (
+                <div className="grid h-16 w-16 place-items-center rounded-lg bg-blush text-[0.6rem] font-semibold text-ink-soft">IMG</div>
+              )}
+              <input type="file" accept="image/png,image/jpeg" onChange={onFundFile} className="text-sm" />
+              {fundUploading && <span className="text-xs text-ink-soft">uploading…</span>}
+              {fundImg && <button type="button" onClick={() => setFundImg(null)} className="text-xs text-rose-deep underline">remove</button>}
+            </div>
+          </div>
         </div>
-        <button disabled={pending} onClick={() => { setMsg(null); start(async () => { const r = await saveFund({ item, goalPhp: goal, blurb }); if (r.ok) refresh(); else setMsg(r.error ?? "Failed"); }); }}
+        <button disabled={pending || fundUploading} onClick={() => { setMsg(null); start(async () => { const r = await saveFund({ item, goalPhp: goal, blurb, imageUrl: fundImg }); if (r.ok) refresh(); else setMsg(r.error ?? "Failed"); }); }}
           className="mt-3 rounded-lg bg-rose px-5 py-2 text-sm font-semibold text-white disabled:opacity-60">Save fund</button>
       </section>
 

@@ -59,11 +59,25 @@ export default async function AdminDashboard() {
     <AdminShell title="Dashboard" active="/admin">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tile label="Invites" value={s.groups} />
-        <Tile label="Attending" value={s.attending} accent />
+        <Tile label="Confirmed RSVPs" value={s.attending} accent />
         <Tile label="Declined" value={s.declined} />
         <Tile label="Pending" value={s.pending} />
-        <Tile label="Confirmed pax" value={s.confirmedPax} accent />
-        <Tile label="People listed" value={s.people} />
+      </div>
+      <p className="mt-5 text-[0.68rem] font-semibold uppercase tracking-wide text-ink-soft">Confirmed head count (pax)</p>
+      <div className="mt-2 grid grid-cols-3 gap-3">
+        <Tile label="Total pax" value={s.confirmedPax} accent />
+        <Tile label="In-person" value={s.inPersonPax} />
+        <Tile label="Online" value={s.onlinePax} />
+      </div>
+
+      <p className="mt-5 text-[0.68rem] font-semibold uppercase tracking-wide text-ink-soft">People listed</p>
+      <div className="mt-2 grid grid-cols-3 gap-3">
+        <Tile label="Total people" value={s.people} />
+        <Tile label="In-person" value={s.inPersonListed} />
+        <Tile label="Online" value={s.onlineListed} />
+      </div>
+
+      <div className="mt-5">
         <Tile label="Gifts raised" value={`₱${s.paidTotalPhp.toLocaleString()}`} accent />
       </div>
 
