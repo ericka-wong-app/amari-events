@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { verifyAdminCreds, createAdminSession, clearAdminSession, isAdmin } from "@/lib/admin";
+import { verifyAdmin, createAdminSession, clearAdminSession, isAdmin } from "@/lib/admin";
 import { createGuest, updateGuest, deleteGuest, type AdminGuest } from "@/lib/admin-data";
 
 export async function adminLogin(username: string, password: string): Promise<{ ok: boolean; error?: string }> {
-  if (!verifyAdminCreds(username, password)) {
+  if (!(await verifyAdmin(username, password))) {
     return { ok: false, error: "Invalid username or password." };
   }
   await createAdminSession();

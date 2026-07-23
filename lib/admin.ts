@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { timingSafeEqual } from "crypto";
-import { signPayload, verifyPayload } from "./crypto";
+import { signPayload, verifyPayload, verifySecret } from "./crypto";
+import { supabaseAdmin } from "./supabase";
 
 const COOKIE = "amari_admin";
 const MAX_AGE = 60 * 60 * 12; // 12h
@@ -12,24 +12,14 @@ function secret(): string {
   return s;
 }
 
-export function adminConfigured(): boolean {
-  return Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD);
-}
-
-function safeEq(a: string, b: string): boolean {
-  const ba = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return ba.length === bb.length && timingSafeEqual(ba, bb);
-}
-
-export function verifyAdminCreds(username: string, password: string): boolean {
-  const U = process.env.ADMIN_USERNAME ?? "";
-  const P = process.env.ADMIN_PASSWORD ?? "";
-  if (!U || !P) return false;
-  // evaluate both to keep timing steady
-  const u = safeEq(username, U);
-  const p = safeEq(password, P);
-  return u && p;
+// Admin credentials live (hashed) in the `admins` table. Login matches the
+// username case-insensitively and verifies the password against its hash.
+export async function verifyAdmin(username: string, password: string): Promise<boolean> {
+  const u = username.trim();
+  if (!u || !password) return false;
+  const sb = supabaseAdmin();
+  const { data } = await sb.from("admins").select("password_hash").ilike("username", u).maybeSingle();
+  return verifySecret(password, data?.password_hash);
 }
 
 export async function createAdminSession(): Promise<void> {
