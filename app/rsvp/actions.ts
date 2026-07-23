@@ -14,6 +14,7 @@ import {
   type SearchHit,
   type MemberPass,
   type GroupMemberView,
+  type GodparentRole,
 } from "@/lib/guests";
 import { createGuestSession, getGuestSession, clearGuestSession } from "@/lib/session";
 import { passQrDataUrl } from "@/lib/qr";
@@ -39,6 +40,7 @@ export type GuestIntro = {
   displayName: string;
   groupName: string | null;
   isOnline: boolean;
+  godparentRole: GodparentRole;
   hasPin: boolean;
   securityQuestion: string | null;
 };
@@ -47,7 +49,7 @@ export async function getGuest(id: string): Promise<Omit<GuestIntro, "id"> | nul
   const mp = await getMemberPass(id);
   if (!mp) return null;
   const auth = await getAuthStatus(id);
-  return { displayName: mp.memberName, groupName: mp.group.name, isOnline: mp.isOnline, hasPin: auth.hasPin, securityQuestion: auth.securityQuestion };
+  return { displayName: mp.memberName, groupName: mp.group.name, isOnline: mp.isOnline, godparentRole: mp.godparentRole, hasPin: auth.hasPin, securityQuestion: auth.securityQuestion };
 }
 
 // Resolve a shared invite link straight to the person (no name search needed).

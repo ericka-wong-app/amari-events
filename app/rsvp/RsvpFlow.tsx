@@ -16,7 +16,7 @@ const QUESTIONS = [
   "What is your favorite color?",
 ];
 
-type Selected = { id: string; displayName: string; groupName: string | null; isOnline: boolean; hasPin: boolean; securityQuestion: string | null };
+type Selected = { id: string; displayName: string; groupName: string | null; isOnline: boolean; godparentRole: "Ninong" | "Ninang" | null; hasPin: boolean; securityQuestion: string | null };
 
 const field = "mt-1 w-full rounded-2xl border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const labelCls = "mt-3 block text-left text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-soft";
@@ -37,7 +37,7 @@ export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken
     inviteHandled.current = true;
     start(async () => {
       const g = await api.getInvite(initialInviteToken);
-      if (g) setSel({ id: g.id, displayName: g.displayName, groupName: g.groupName, isOnline: g.isOnline, hasPin: g.hasPin, securityQuestion: g.securityQuestion });
+      if (g) setSel({ id: g.id, displayName: g.displayName, groupName: g.groupName, isOnline: g.isOnline, godparentRole: g.godparentRole, hasPin: g.hasPin, securityQuestion: g.securityQuestion });
     });
   }, [initialInviteToken, initialPass]);
 
@@ -90,6 +90,7 @@ export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken
           <div className="text-4xl">🌏💛</div>
           <p className="mt-2 text-[0.6rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/70">Celebrating with you from afar</p>
           <h2 className="mt-1 font-script text-4xl text-rose-deep">{sel.displayName}</h2>
+          {sel.godparentRole && <GodparentBanner role={sel.godparentRole} />}
           <FloralDivider className="mt-3" />
           <p className="mt-4 text-sm leading-relaxed text-ink">
             We wish more than anything that you could be here for {content.celebrantFirst}&apos;s baptism on{" "}
@@ -202,12 +203,7 @@ function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
       <h2 className="mt-1 font-script text-4xl text-rose-deep">{p.memberName}</h2>
       {p.group.name && <p className="mt-1 text-xs text-ink-soft">{p.group.name} invite{others.length > 0 ? ` · with ${others.join(", ")}` : ""}</p>}
 
-      {p.godparentRole && (
-        <div className="mt-3 rounded-2xl border border-rose/40 bg-gradient-to-r from-blush/70 to-white px-4 py-3">
-          <p className="text-[0.58rem] font-semibold uppercase tracking-[0.26em] text-rose-deep/70">A special role</p>
-          <p className="mt-0.5 font-script text-2xl text-rose-deep">You&apos;re Amari&apos;s {p.godparentRole} 🕊️</p>
-        </div>
-      )}
+      {p.godparentRole && <GodparentBanner role={p.godparentRole} />}
 
       <p className="mt-3 rounded-2xl bg-blush/40 px-4 py-2 text-sm text-ink">
         {p.isOnline ? "You're joining online from abroad 🌏" : "This is your own RSVP — everyone in your group answers for themselves."}
@@ -250,10 +246,10 @@ function PassCard({ pass, onEdit, onLogout }: { pass: Pass; onEdit: () => void; 
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/75">Your Pass</p>
       <h2 className="mt-1 font-script text-5xl text-rose-deep">{p.memberName}</h2>
       {p.group.name && <p className="text-xs text-ink-soft">{p.group.name} invite{others.length > 0 ? ` · with ${others.join(", ")}` : ""}</p>}
+      {p.godparentRole && <GodparentBanner role={p.godparentRole} />}
       <FloralDivider className="mt-3" />
 
       <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
-        {p.godparentRole && <Badge>🕊️ {p.godparentRole}</Badge>}
         <Badge>{attending ? "Attending" : declined ? "Not attending" : "RSVP pending"}</Badge>
         {p.isOnline ? <Badge>Joining online</Badge> : (<>{attending && attLabel && <Badge>{attLabel}</Badge>}{p.group.tableNumber && <Badge>Table {p.group.tableNumber}</Badge>}</>)}
       </div>
@@ -284,6 +280,17 @@ function PassCard({ pass, onEdit, onLogout }: { pass: Pass; onEdit: () => void; 
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border border-blush-2 bg-blush/60 px-3 py-1 font-semibold text-rose-deep">{children}</span>;
+}
+
+function GodparentBanner({ role }: { role: "Ninong" | "Ninang" }) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-2xl border border-rose/40 bg-gradient-to-r from-blush/80 via-white to-blush/60 px-5 py-4 text-center shadow-[0_14px_36px_-24px_rgba(183,110,125,0.7)]">
+      <p className="text-3xl">🕊️</p>
+      <p className="mt-1 text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/75">A special role in Amari&apos;s baptism</p>
+      <p className="mt-1 font-script text-3xl leading-tight text-rose-deep">You&apos;re Amari&apos;s {role}</p>
+      <p className="mt-1 text-xs text-ink-soft">Thank you for standing with Amari on this special day. 💕</p>
+    </div>
+  );
 }
 
 function MemberStatusChip({ m }: { m: api.GroupMemberRsvp }) {
