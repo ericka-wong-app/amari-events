@@ -9,6 +9,8 @@ import {
   addMember,
   updateMember,
   deleteMember,
+  createInvite,
+  setGodparentRole,
 } from "@/lib/admin-data";
 
 export async function adminLogin(username: string, password: string): Promise<{ ok: boolean; error?: string }> {
@@ -31,6 +33,7 @@ function wrap(fn: () => Promise<void>): Promise<Res> {
       if (!(await isAdmin())) throw new Error("Not authorized.");
       await fn();
       revalidatePath("/admin/guests");
+      revalidatePath("/admin/godparents");
       revalidatePath("/admin");
       return { ok: true };
     } catch (e) {
@@ -56,4 +59,12 @@ export async function editMember(id: string, fields: { displayName: string; altN
 }
 export async function delMember(id: string): Promise<Res> {
   return wrap(() => deleteMember(id));
+}
+export async function makeInvite(name: string, maxPax: number, tableNumber: string | null, memberNames: string[]): Promise<Res> {
+  return wrap(() => createInvite(name, maxPax, tableNumber, memberNames));
+}
+export async function setRole(memberId: string, role: "Ninong" | "Ninang" | null): Promise<Res> {
+  return wrap(async () => {
+    await setGodparentRole(memberId, role);
+  });
 }

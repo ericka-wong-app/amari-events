@@ -2,17 +2,21 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Group, Member } from "@/lib/admin-data";
-import { newGroup, editGroup, delGroup, newMember, editMember, delMember } from "../actions";
+import { makeInvite, editGroup, delGroup, newMember, editMember, delMember } from "../actions";
 
-const input = "w-full rounded-lg border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
-const label = "block text-[0.62rem] font-semibold uppercase tracking-wide text-ink-soft";
+const inp = "w-full rounded-md border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
+const lbl = "block text-[0.62rem] font-semibold uppercase tracking-wide text-ink-soft";
+const btn = "rounded-md bg-rose px-4 py-2 text-sm font-semibold text-white disabled:opacity-60";
+const btnGhost = "rounded-md border border-blush-2 bg-white px-4 py-2 text-sm font-semibold text-ink-soft";
+const PER_PAGE = 12;
 
 export default function GroupManager({ groups }: { groups: Group[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [q, setQ] = useState("");
-  const [name, setName] = useState("");
-  const [pax, setPax] = useState(1);
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const refresh = () => router.refresh();
@@ -24,115 +28,169 @@ export default function GroupManager({ groups }: { groups: Group[] }) {
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return groups;
-    return groups.filter(
-      (g) => g.name.toLowerCase().includes(s) || g.members.some((m) => m.displayName.toLowerCase().includes(s))
-    );
+    return groups.filter((g) => g.name.toLowerCase().includes(s) || g.members.some((m) => m.displayName.toLowerCase().includes(s)));
   }, [groups, q]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const current = Math.min(page, pageCount - 1);
+  const rows = filtered.slice(current * PER_PAGE, current * PER_PAGE + PER_PAGE);
+
+  const activeGroup = selected ? groups.find((g) => g.id === selected) ?? null : null;
+
+  if (activeGroup) {
+    return <GroupDetail group={activeGroup} pending={pending} run={run} onBack={() => setSelected(null)} msg={msg} />;
+  }
 
   return (
     <div>
-      <div className="rounded-xl border border-blush-2 bg-blush/30 px-4 py-3 text-xs text-ink-soft">
-        💡 An <strong className="text-rose-deep">invite is a Group</strong> (a person or a family). Set its <strong className="text-rose-deep">pax</strong> (total seats)
-        and table <em>once</em>, then add the people in it. Everyone in the group shares that pax and can log in with their own name.
+      {/* toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder="Search invite or person" className={`${inp} max-w-xs flex-1`} />
+        {!creating && <button onClick={() => setCreating(true)} className={btn}>New invite</button>}
       </div>
 
-      {/* New group */}
-      <div className="mt-4 rounded-xl border border-blush-2 bg-white px-4 py-3">
-        <p className={label}>New invite / group</p>
-        <div className="mt-1 flex flex-wrap gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (e.g. Wong Family, or Lola V)" className={`${input} flex-1`} />
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-ink-soft">pax</span>
-            <input type="number" min={1} value={pax} onChange={(e) => setPax(Number(e.target.value))} className="w-16 rounded-lg border border-blush-2 bg-white px-2 py-2 text-sm" />
-          </div>
-          <button onClick={() => { if (name.trim()) run(async () => { const r = await newGroup(name, pax); if (r.ok) { setName(""); setPax(1); } return r; }); }}
-            disabled={pending} className="rounded-lg bg-rose px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">+ Create</button>
+      {creating && (
+        <NewInvite pending={pending}
+          onCancel={() => setCreating(false)}
+          onCreate={(name, pax, table, members) => run(async () => {
+            const r = await makeInvite(name, pax, table, members);
+            if (r.ok) setCreating(false);
+            return r;
+          })}
+        />
+      )}
+      {msg && !creating && <p className="mt-2 text-sm text-rose-deep">{msg}</p>}
+
+      {/* table */}
+      <div className="mt-4 overflow-x-auto rounded-lg border border-blush-2">
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead className="bg-blush/40 text-[0.66rem] uppercase tracking-wide text-ink-soft">
+            <tr>
+              <th className="px-4 py-2.5 font-semibold">Invite</th>
+              <th className="px-3 py-2.5 font-semibold">Pax</th>
+              <th className="px-3 py-2.5 font-semibold">Table</th>
+              <th className="px-3 py-2.5 font-semibold">RSVP</th>
+              <th className="px-4 py-2.5 font-semibold">People</th>
+              <th className="px-3 py-2.5" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((g) => {
+              const att = g.attendance === "both" ? "Ceremony + Reception" : g.attendance === "reception" ? "Reception only" : g.attendance === "ceremony" ? "Ceremony only" : "";
+              const rsvp = g.rsvpStatus === "attending" ? `Attending (${g.confirmedPax ?? 0})` : g.rsvpStatus === "declined" ? "Declined" : "Pending";
+              return (
+                <tr key={g.id} className="border-t border-blush-2/70 hover:bg-blush/20">
+                  <td className="px-4 py-2.5 font-semibold text-ink">{g.name}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-ink-soft">{g.maxPax}</td>
+                  <td className="px-3 py-2.5 text-ink-soft">{g.tableNumber || "—"}</td>
+                  <td className="px-3 py-2.5">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${g.rsvpStatus === "attending" ? "bg-sage/40 text-sage-deep" : g.rsvpStatus === "declined" ? "bg-blush-2 text-rose-deep" : "bg-white text-ink-soft"}`}>{rsvp}</span>
+                    {att && <span className="ml-1 block text-[0.65rem] text-ink-soft">{att}</span>}
+                  </td>
+                  <td className="max-w-[220px] truncate px-4 py-2.5 text-ink-soft">{g.members.map((m) => m.displayName).join(", ") || "—"}</td>
+                  <td className="px-3 py-2.5 text-right"><button onClick={() => setSelected(g.id)} className="text-xs font-semibold text-rose-deep">Manage</button></td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-soft">No invites found.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {/* pagination */}
+      <div className="mt-3 flex items-center justify-between text-sm text-ink-soft">
+        <span>{filtered.length} invites</span>
+        <div className="flex items-center gap-2">
+          <button disabled={current === 0} onClick={() => setPage(current - 1)} className={`${btnGhost} px-3 py-1 disabled:opacity-40`}>Prev</button>
+          <span>Page {current + 1} / {pageCount}</span>
+          <button disabled={current >= pageCount - 1} onClick={() => setPage(current + 1)} className={`${btnGhost} px-3 py-1 disabled:opacity-40`}>Next</button>
         </div>
-      </div>
-
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search group or person…" className={`${input} mt-3`} />
-      {msg && <p className="mt-2 text-sm text-rose-deep">{msg}</p>}
-      <p className="mt-3 text-xs text-ink-soft">{filtered.length} of {groups.length} groups</p>
-
-      <div className="mt-2 space-y-3">
-        {filtered.map((g) => (
-          <GroupCard key={g.id} group={g} pending={pending} run={run} />
-        ))}
       </div>
     </div>
   );
 }
 
-function GroupCard({ group, pending, run }: { group: Group; pending: boolean; run: (fn: () => Promise<{ ok: boolean; error?: string }>) => void }) {
-  const [editing, setEditing] = useState(false);
+function NewInvite({ pending, onCreate, onCancel }: {
+  pending: boolean;
+  onCreate: (name: string, pax: number, table: string | null, members: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [pax, setPax] = useState(1);
+  const [table, setTable] = useState("");
+  const [members, setMembers] = useState("");
+  return (
+    <div className="mt-3 rounded-lg border border-rose/40 bg-white px-4 py-4">
+      <p className="font-display text-lg italic text-rose-deep">New invite</p>
+      <div className="mt-2 grid gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-2"><span className={lbl}>Invite name (person or family)</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Wong Family — or — Lola V" className={inp} /></div>
+        <div><span className={lbl}>Total pax (seats)</span><input type="number" min={1} value={pax} onChange={(e) => setPax(Number(e.target.value))} className={inp} /></div>
+        <div><span className={lbl}>Table (optional)</span><input value={table} onChange={(e) => setTable(e.target.value)} className={inp} /></div>
+        <div className="sm:col-span-3"><span className={lbl}>People in this invite (one name per line)</span><textarea value={members} onChange={(e) => setMembers(e.target.value)} rows={3} placeholder={"Maria\nJunjun\nTita"} className={`${inp} resize-y`} /></div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button disabled={pending || !name.trim()} className={btn}
+          onClick={() => onCreate(name, pax, table || null, members.split("\n").map((m) => m.trim()).filter(Boolean))}>Create invite</button>
+        <button onClick={onCancel} className={btnGhost}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function GroupDetail({ group, pending, run, onBack, msg }: {
+  group: Group; pending: boolean; onBack: () => void; msg: string | null;
+  run: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
+}) {
   const [name, setName] = useState(group.name);
   const [pax, setPax] = useState(group.maxPax);
   const [table, setTable] = useState(group.tableNumber ?? "");
   const [memberName, setMemberName] = useState("");
-  const [editMemberId, setEditMemberId] = useState<string | null>(null);
-
-  const att =
-    group.attendance === "both" ? " · ceremony + reception"
-    : group.attendance === "reception" ? " · reception only"
-    : group.attendance === "ceremony" ? " · ceremony only" : "";
-  const status =
-    group.rsvpStatus === "attending" ? `✅ ${group.confirmedPax ?? 0}/${group.maxPax} coming${att}`
-    : group.rsvpStatus === "declined" ? "❌ declined" : "⏳ pending";
+  const [editId, setEditId] = useState<string | null>(null);
 
   return (
-    <div className="rounded-2xl border border-blush-2 bg-white px-4 py-4">
-      {editing ? (
-        <div className="grid grid-cols-2 gap-2">
-          <div className="col-span-2"><span className={label}>Group name</span><input value={name} onChange={(e) => setName(e.target.value)} className={input} /></div>
-          <div><span className={label}>Pax (seats)</span><input type="number" min={1} value={pax} onChange={(e) => setPax(Number(e.target.value))} className={input} /></div>
-          <div><span className={label}>Table #</span><input value={table} onChange={(e) => setTable(e.target.value)} className={input} /></div>
-          <div className="col-span-2 mt-1 flex gap-2">
-            <button onClick={() => run(async () => { const r = await editGroup(group.id, { name, maxPax: pax, tableNumber: table || null }); if (r.ok) setEditing(false); return r; })} disabled={pending} className="rounded-lg bg-rose px-4 py-2 text-sm font-semibold text-white">Save</button>
-            <button onClick={() => setEditing(false)} className="rounded-lg border border-blush-2 px-4 py-2 text-sm font-semibold text-ink-soft">Cancel</button>
-            <button onClick={() => { if (confirm(`Delete group "${group.name}" and its members?`)) run(() => delGroup(group.id)); }} className="ml-auto rounded-lg border border-rose/40 px-4 py-2 text-sm font-semibold text-rose-deep">Delete group</button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="font-display text-lg italic text-rose-deep">📁 {group.name}</p>
-            <p className="text-xs text-ink-soft">{group.maxPax} pax{group.tableNumber ? ` · Table ${group.tableNumber}` : ""} · {status}</p>
-          </div>
-          <button onClick={() => setEditing(true)} className="text-xs text-rose-deep">edit ›</button>
-        </div>
-      )}
+    <div>
+      <button onClick={onBack} className="text-sm font-semibold text-rose-deep">← Back to all invites</button>
 
-      {/* Members */}
-      <div className="mt-3 space-y-1.5">
-        {group.members.map((m) =>
-          editMemberId === m.id ? (
+      <div className="mt-3 rounded-lg border border-blush-2 bg-white px-4 py-4">
+        <p className={lbl}>Invite details</p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-4">
+          <div className="sm:col-span-2"><span className={lbl}>Name</span><input value={name} onChange={(e) => setName(e.target.value)} className={inp} /></div>
+          <div><span className={lbl}>Pax</span><input type="number" min={1} value={pax} onChange={(e) => setPax(Number(e.target.value))} className={inp} /></div>
+          <div><span className={lbl}>Table</span><input value={table} onChange={(e) => setTable(e.target.value)} className={inp} /></div>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button disabled={pending} onClick={() => run(() => editGroup(group.id, { name, maxPax: pax, tableNumber: table || null }))} className={btn}>Save</button>
+          <button disabled={pending} onClick={() => { if (confirm(`Delete "${group.name}" and everyone in it?`)) { run(() => delGroup(group.id)); onBack(); } }} className="ml-auto rounded-md border border-rose/40 px-4 py-2 text-sm font-semibold text-rose-deep">Delete invite</button>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-blush-2 bg-white px-4 py-4">
+        <p className={lbl}>People ({group.members.length})</p>
+        <div className="mt-2 space-y-1.5">
+          {group.members.map((m) => editId === m.id ? (
             <MemberEditor key={m.id} member={m} pending={pending}
-              onCancel={() => setEditMemberId(null)}
-              onSave={(f) => run(async () => { const r = await editMember(m.id, f); if (r.ok) setEditMemberId(null); return r; })}
-              onDelete={() => run(async () => { const r = await delMember(m.id); if (r.ok) setEditMemberId(null); return r; })}
+              onCancel={() => setEditId(null)}
+              onSave={(f) => run(async () => { const r = await editMember(m.id, f); if (r.ok) setEditId(null); return r; })}
+              onDelete={() => run(async () => { const r = await delMember(m.id); if (r.ok) setEditId(null); return r; })}
             />
           ) : (
-            <div key={m.id} className="flex items-center justify-between rounded-lg bg-blush/30 px-3 py-1.5 text-sm">
-              <span className="text-ink">
-                {m.displayName}
-                {m.godparentRole && <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-[0.6rem] font-semibold text-rose-deep">{m.godparentRole}</span>}
-                {m.checkedIn && <span className="ml-2 text-[0.6rem] text-ink-soft">🎀 in</span>}
+            <div key={m.id} className="flex items-center justify-between rounded-md border border-blush-2/70 px-3 py-2 text-sm">
+              <span className="text-ink">{m.displayName}
+                {m.godparentRole && <span className="ml-2 rounded-full bg-blush px-2 py-0.5 text-[0.6rem] font-semibold text-rose-deep">{m.godparentRole}</span>}
               </span>
-              <button onClick={() => setEditMemberId(m.id)} className="text-xs text-rose-deep">edit</button>
+              <button onClick={() => setEditId(m.id)} className="text-xs font-semibold text-rose-deep">Edit</button>
             </div>
-          )
-        )}
-        {group.members.length === 0 && <p className="text-xs text-ink-soft">No people yet — add them below.</p>}
+          ))}
+          {group.members.length === 0 && <p className="text-sm text-ink-soft">No people yet.</p>}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Add a person"
+            onKeyDown={(e) => { if (e.key === "Enter" && memberName.trim()) run(async () => { const r = await newMember(group.id, memberName); if (r.ok) setMemberName(""); return r; }); }}
+            className={inp} />
+          <button disabled={pending || !memberName.trim()} onClick={() => run(async () => { const r = await newMember(group.id, memberName); if (r.ok) setMemberName(""); return r; })} className={btnGhost}>Add</button>
+        </div>
       </div>
-
-      {/* Add member */}
-      <div className="mt-2 flex gap-2">
-        <input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Add a person to this group…"
-          onKeyDown={(e) => { if (e.key === "Enter" && memberName.trim()) run(async () => { const r = await newMember(group.id, memberName); if (r.ok) setMemberName(""); return r; }); }}
-          className={`${input} text-sm`} />
-        <button onClick={() => { if (memberName.trim()) run(async () => { const r = await newMember(group.id, memberName); if (r.ok) setMemberName(""); return r; }); }}
-          disabled={pending} className="whitespace-nowrap rounded-lg border border-rose bg-white px-3 py-2 text-sm font-semibold text-rose-deep">+ Person</button>
-      </div>
+      {msg && <p className="mt-2 text-sm text-rose-deep">{msg}</p>}
     </div>
   );
 }
@@ -146,21 +204,20 @@ function MemberEditor({ member, pending, onSave, onCancel, onDelete }: {
   const [alt, setAlt] = useState(member.altNames.join(", "));
   const [role, setRole] = useState<string>(member.godparentRole ?? "");
   return (
-    <div className="rounded-lg border-2 border-rose/40 bg-white px-3 py-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="col-span-2"><span className={label}>Name</span><input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={input} /></div>
-        <div className="col-span-2"><span className={label}>Nicknames / alt spellings</span><input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="comma-separated" className={input} /></div>
-        <div className="col-span-2"><span className={label}>Godparent</span>
-          <select value={role} onChange={(e) => setRole(e.target.value)} className={input}>
-            <option value="">— none —</option><option value="Ninong">Ninong</option><option value="Ninang">Ninang</option>
+    <div className="rounded-md border-2 border-rose/40 bg-white px-3 py-3">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div><span className={lbl}>Name</span><input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inp} /></div>
+        <div><span className={lbl}>Nicknames (comma-sep)</span><input value={alt} onChange={(e) => setAlt(e.target.value)} className={inp} /></div>
+        <div><span className={lbl}>Godparent</span>
+          <select value={role} onChange={(e) => setRole(e.target.value)} className={inp}>
+            <option value="">None</option><option value="Ninong">Ninong</option><option value="Ninang">Ninang</option>
           </select>
         </div>
       </div>
       <div className="mt-3 flex gap-2">
-        <button disabled={pending} onClick={() => onSave({ displayName, altNames: alt.split(",").map((s) => s.trim()).filter(Boolean), godparentRole: (role || null) as "Ninong" | "Ninang" | null })}
-          className="rounded-lg bg-rose px-4 py-1.5 text-sm font-semibold text-white">Save</button>
-        <button onClick={onCancel} className="rounded-lg border border-blush-2 px-3 py-1.5 text-sm font-semibold text-ink-soft">Cancel</button>
-        <button onClick={onDelete} className="ml-auto rounded-lg border border-rose/40 px-3 py-1.5 text-sm font-semibold text-rose-deep">Remove</button>
+        <button disabled={pending} onClick={() => onSave({ displayName, altNames: alt.split(",").map((s) => s.trim()).filter(Boolean), godparentRole: (role || null) as "Ninong" | "Ninang" | null })} className={btn}>Save</button>
+        <button onClick={onCancel} className={btnGhost}>Cancel</button>
+        <button onClick={onDelete} disabled={pending} className="ml-auto rounded-md border border-rose/40 px-3 py-1.5 text-sm font-semibold text-rose-deep">Remove</button>
       </div>
     </div>
   );

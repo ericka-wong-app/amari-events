@@ -84,7 +84,7 @@ export default function GiftManager({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={it.imageUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
                 ) : (
-                  <div className="grid h-12 w-12 place-items-center rounded-lg bg-blush text-lg">🎁</div>
+                  <div className="grid h-12 w-12 place-items-center rounded-lg bg-blush text-[0.6rem] font-semibold text-ink-soft">IMG</div>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-ink">{it.title}</p>
@@ -163,7 +163,7 @@ function ItemForm({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={imageUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
             ) : (
-              <div className="grid h-16 w-16 place-items-center rounded-lg bg-blush text-xl">🎁</div>
+              <div className="grid h-16 w-16 place-items-center rounded-lg bg-blush text-[0.6rem] font-semibold text-ink-soft">IMG</div>
             )}
             <input type="file" accept="image/png,image/jpeg" onChange={onFile} className="text-sm" />
             {uploading && <span className="text-xs text-ink-soft">uploading…</span>}

@@ -8,7 +8,7 @@ export default async function AdminCheckinPage() {
   return (
     <AdminShell title="Check-in" active="/admin/checkin">
       <div className="rounded-2xl border border-blush-2 bg-white px-6 py-10 text-center text-ink-soft">
-        📷 QR scanner + manual check-in — building next.
+        QR scanner + manual check-in — building next.
       </div>
     </AdminShell>
   );

@@ -31,16 +31,11 @@ export default async function AdminDashboard() {
         <Tile label="Gifts raised" value={`₱${s.paidTotalPhp.toLocaleString()}`} accent />
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <Link href="/admin/guests" className="rounded-2xl border border-blush-2 bg-white px-5 py-4 font-semibold text-rose-deep hover:bg-blush/30">
-          👥 Manage guests →
-        </Link>
-        <Link href="/admin/checkin" className="rounded-2xl border border-blush-2 bg-white px-5 py-4 font-semibold text-rose-deep hover:bg-blush/30">
-          📷 Check-in →
-        </Link>
-        <Link href="/admin/gifts" className="rounded-2xl border border-blush-2 bg-white px-5 py-4 font-semibold text-rose-deep hover:bg-blush/30">
-          🎁 Gifts &amp; registry →
-        </Link>
+      <div className="mt-6 grid gap-3 sm:grid-cols-4">
+        <Link href="/admin/guests" className="rounded-xl border border-blush-2 bg-white px-5 py-4 font-semibold text-rose-deep hover:bg-blush/30">Invites &amp; groups</Link>
+        <Link href="/admin/godparents" className="rounded-xl border border-blush-2 bg-white px-5 py-4 font-semibold text-rose-deep hover:bg-blush/30">Ninong &amp; Ninang</Link>
+        <Link href="/admin/checkin" className="rounded-xl border border-blush-2 bg-white px-5 py-4 font-semibold text-rose-deep hover:bg-blush/30">Check-in</Link>
+        <Link href="/admin/gifts" className="rounded-xl border border-blush-2 bg-white px-5 py-4 font-semibold text-rose-deep hover:bg-blush/30">Gifts &amp; registry</Link>
       </div>
     </AdminShell>
   );

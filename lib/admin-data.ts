@@ -164,3 +164,58 @@ export async function deleteMember(id: string): Promise<void> {
   const { error } = await sb.from("guests").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+// Create a whole invite at once: a group + its people.
+export async function createInvite(
+  name: string,
+  maxPax: number,
+  tableNumber: string | null,
+  memberNames: string[]
+): Promise<void> {
+  const n = name.trim();
+  if (!n) throw new Error("Invite name is required.");
+  const sb = supabaseAdmin();
+  const { data: g, error } = await sb
+    .from("groups")
+    .insert({ name: n, max_pax: Math.max(1, maxPax), table_number: tableNumber?.trim() || null })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const members = memberNames
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((x) => ({ group_id: g.id, display_name: x, max_pax: 1 }));
+  if (members.length > 0) {
+    const { error: e2 } = await sb.from("guests").insert(members);
+    if (e2) throw new Error(e2.message);
+  }
+}
+
+export async function setGodparentRole(memberId: string, role: "Ninong" | "Ninang" | null): Promise<void> {
+  const sb = supabaseAdmin();
+  const { error } = await sb.from("guests").update({ godparent_role: role }).eq("id", memberId);
+  if (error) throw new Error(error.message);
+}
+
+export type FlatMember = {
+  id: string;
+  displayName: string;
+  groupName: string | null;
+  godparentRole: "Ninong" | "Ninang" | null;
+};
+
+export async function listMembersFlat(): Promise<FlatMember[]> {
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from("guests")
+    .select("id, display_name, godparent_role, groups(name)")
+    .order("display_name");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { id: string; display_name: string; godparent_role: "Ninong" | "Ninang" | null; groups: { name: string } | { name: string }[] | null }[]).map((r) => ({
+    id: r.id,
+    displayName: r.display_name,
+    groupName: one(r.groups)?.name ?? null,
+    godparentRole: r.godparent_role,
+  }));
+}
