@@ -14,7 +14,7 @@ alter table groups add column if not exists confirmed_pax int;
 alter table groups add column if not exists responded_at timestamptz;
 alter table groups add column if not exists checked_in_at timestamptz;
 alter table groups add column if not exists attendance text check (attendance in ('both','reception','ceremony'));
-alter table groups add column if not exists is_online boolean not null default false;
+alter table guests add column if not exists is_online boolean not null default false;
 
 -- move loose guests into their own solo group (pax 1)
 insert into groups (name, max_pax)

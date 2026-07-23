@@ -8,6 +8,7 @@ export type Member = {
   displayName: string;
   altNames: string[];
   godparentRole: "Ninong" | "Ninang" | null;
+  isOnline: boolean;
   checkedIn: boolean;
 };
 
@@ -21,7 +22,6 @@ export type Group = {
   rsvpStatus: "attending" | "declined" | "pending";
   confirmedPax: number | null;
   attendance: Attendance;
-  isOnline: boolean;
   members: Member[];
 };
 
@@ -45,6 +45,7 @@ type MemberRow = {
   display_name: string;
   alt_names: string[] | null;
   godparent_role: "Ninong" | "Ninang" | null;
+  is_online: boolean | null;
   checkins: { checked_in_at: string } | { checked_in_at: string }[] | null;
 };
 type GroupRow = {
@@ -55,12 +56,11 @@ type GroupRow = {
   rsvp_status: string;
   confirmed_pax: number | null;
   attendance: string | null;
-  is_online: boolean | null;
   guests: MemberRow[] | null;
 };
 
 const SELECT =
-  "id, name, max_pax, table_number, rsvp_status, confirmed_pax, attendance, is_online, guests(id, display_name, alt_names, godparent_role, checkins(checked_in_at))";
+  "id, name, max_pax, table_number, rsvp_status, confirmed_pax, attendance, guests(id, display_name, alt_names, godparent_role, is_online, checkins(checked_in_at))";
 
 function toGroup(r: GroupRow): Group {
   return {
@@ -71,13 +71,13 @@ function toGroup(r: GroupRow): Group {
     rsvpStatus: (r.rsvp_status as Group["rsvpStatus"]) ?? "pending",
     confirmedPax: r.confirmed_pax,
     attendance: (r.attendance as Group["attendance"]) ?? null,
-    isOnline: Boolean(r.is_online),
     members: (r.guests ?? [])
       .map((m) => ({
         id: m.id,
         displayName: m.display_name,
         altNames: m.alt_names ?? [],
         godparentRole: m.godparent_role,
+        isOnline: Boolean(m.is_online),
         checkedIn: Boolean(one(m.checkins)),
       }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName)),
@@ -119,7 +119,7 @@ export async function createGroup(name: string, maxPax: number): Promise<string>
 
 export async function updateGroup(
   id: string,
-  fields: { name: string; maxPax: number; tableNumber: string | null; isOnline: boolean }
+  fields: { name: string; maxPax: number; tableNumber: string | null }
 ): Promise<void> {
   const sb = supabaseAdmin();
   const { error } = await sb
@@ -128,7 +128,6 @@ export async function updateGroup(
       name: fields.name.trim(),
       max_pax: Math.max(1, fields.maxPax),
       table_number: fields.tableNumber?.trim() || null,
-      is_online: fields.isOnline,
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
@@ -153,7 +152,7 @@ export async function addMember(groupId: string, displayName: string): Promise<v
 
 export async function updateMember(
   id: string,
-  fields: { displayName: string; altNames: string[]; godparentRole: "Ninong" | "Ninang" | null }
+  fields: { displayName: string; altNames: string[]; godparentRole: "Ninong" | "Ninang" | null; isOnline: boolean }
 ): Promise<void> {
   const sb = supabaseAdmin();
   const { error } = await sb
@@ -162,6 +161,7 @@ export async function updateMember(
       display_name: fields.displayName.trim(),
       alt_names: fields.altNames.map((n) => n.trim()).filter(Boolean),
       godparent_role: fields.godparentRole,
+      is_online: fields.isOnline,
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
@@ -178,15 +178,14 @@ export async function createInvite(
   name: string,
   maxPax: number,
   tableNumber: string | null,
-  memberNames: string[],
-  isOnline: boolean
+  memberNames: string[]
 ): Promise<void> {
   const n = name.trim();
   if (!n) throw new Error("Invite name is required.");
   const sb = supabaseAdmin();
   const { data: g, error } = await sb
     .from("groups")
-    .insert({ name: n, max_pax: Math.max(1, maxPax), table_number: tableNumber?.trim() || null, is_online: isOnline })
+    .insert({ name: n, max_pax: Math.max(1, maxPax), table_number: tableNumber?.trim() || null })
     .select("id")
     .single();
   if (error) throw new Error(error.message);

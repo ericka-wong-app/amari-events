@@ -52,8 +52,8 @@ export default function GroupManager({ groups }: { groups: Group[] }) {
       {creating && (
         <NewInvite pending={pending}
           onCancel={() => setCreating(false)}
-          onCreate={(name, pax, table, members, online) => run(async () => {
-            const r = await makeInvite(name, pax, table, members, online);
+          onCreate={(name, pax, table, members) => run(async () => {
+            const r = await makeInvite(name, pax, table, members);
             if (r.ok) setCreating(false);
             return r;
           })}
@@ -80,7 +80,7 @@ export default function GroupManager({ groups }: { groups: Group[] }) {
               const rsvp = g.rsvpStatus === "attending" ? `Attending (${g.confirmedPax ?? 0})` : g.rsvpStatus === "declined" ? "Declined" : "Pending";
               return (
                 <tr key={g.id} className="border-t border-blush-2/70 hover:bg-blush/20">
-                  <td className="px-4 py-2.5 font-semibold text-ink">{g.name}{g.isOnline && <span className="ml-2 rounded-full bg-sky/50 px-2 py-0.5 text-[0.6rem] font-semibold text-ink-soft">Online</span>}</td>
+                  <td className="px-4 py-2.5 font-semibold text-ink">{g.name}{g.members.some((m) => m.isOnline) && <span className="ml-2 rounded-full bg-sky/50 px-2 py-0.5 text-[0.6rem] font-semibold text-ink-soft">Online</span>}</td>
                   <td className="px-3 py-2.5 tabular-nums text-ink-soft">{g.maxPax}</td>
                   <td className="px-3 py-2.5 text-ink-soft">{g.tableNumber || "—"}</td>
                   <td className="px-3 py-2.5">
@@ -112,14 +112,13 @@ export default function GroupManager({ groups }: { groups: Group[] }) {
 
 function NewInvite({ pending, onCreate, onCancel }: {
   pending: boolean;
-  onCreate: (name: string, pax: number, table: string | null, members: string[], online: boolean) => void;
+  onCreate: (name: string, pax: number, table: string | null, members: string[]) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [pax, setPax] = useState(1);
   const [table, setTable] = useState("");
   const [members, setMembers] = useState("");
-  const [online, setOnline] = useState(false);
   return (
     <div className="mt-3 rounded-lg border border-rose/40 bg-white px-4 py-4">
       <p className="font-display text-lg italic text-rose-deep">New invite</p>
@@ -129,13 +128,10 @@ function NewInvite({ pending, onCreate, onCancel }: {
         <div><span className={lbl}>Table (optional)</span><input value={table} onChange={(e) => setTable(e.target.value)} className={inp} /></div>
         <div className="sm:col-span-3"><span className={lbl}>People in this invite (one name per line)</span><textarea value={members} onChange={(e) => setMembers(e.target.value)} rows={3} placeholder={"Maria\nJunjun\nTita"} className={`${inp} resize-y`} /></div>
       </div>
-      <label className="mt-3 flex items-center gap-2 text-sm text-ink">
-        <input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} className="h-4 w-4 accent-rose" />
-        Online guests (joining from abroad — no table/QR needed)
-      </label>
+      <p className="mt-2 text-xs text-ink-soft">Mark individual people as &ldquo;online (from abroad)&rdquo; after adding them, via Edit.</p>
       <div className="mt-3 flex gap-2">
         <button disabled={pending || !name.trim()} className={btn}
-          onClick={() => onCreate(name, pax, table || null, members.split("\n").map((m) => m.trim()).filter(Boolean), online)}>Create invite</button>
+          onClick={() => onCreate(name, pax, table || null, members.split("\n").map((m) => m.trim()).filter(Boolean))}>Create invite</button>
         <button onClick={onCancel} className={btnGhost}>Cancel</button>
       </div>
     </div>
@@ -149,7 +145,6 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
   const [name, setName] = useState(group.name);
   const [pax, setPax] = useState(group.maxPax);
   const [table, setTable] = useState(group.tableNumber ?? "");
-  const [online, setOnline] = useState(group.isOnline);
   const [memberName, setMemberName] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -164,12 +159,8 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
           <div><span className={lbl}>Pax</span><input type="number" min={1} value={pax} onChange={(e) => setPax(Number(e.target.value))} className={inp} /></div>
           <div><span className={lbl}>Table</span><input value={table} onChange={(e) => setTable(e.target.value)} className={inp} /></div>
         </div>
-        <label className="mt-3 flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} className="h-4 w-4 accent-rose" />
-          Online guests (joining from abroad — no table/QR needed)
-        </label>
         <div className="mt-3 flex gap-2">
-          <button disabled={pending} onClick={() => run(() => editGroup(group.id, { name, maxPax: pax, tableNumber: table || null, isOnline: online }))} className={btn}>Save</button>
+          <button disabled={pending} onClick={() => run(() => editGroup(group.id, { name, maxPax: pax, tableNumber: table || null }))} className={btn}>Save</button>
           <button disabled={pending} onClick={() => { if (confirm(`Delete "${group.name}" and everyone in it?`)) { run(() => delGroup(group.id)); onBack(); } }} className="ml-auto rounded-md border border-rose/40 px-4 py-2 text-sm font-semibold text-rose-deep">Delete invite</button>
         </div>
       </div>
@@ -187,6 +178,7 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
             <div key={m.id} className="flex items-center justify-between rounded-md border border-blush-2/70 px-3 py-2 text-sm">
               <span className="text-ink">{m.displayName}
                 {m.godparentRole && <span className="ml-2 rounded-full bg-blush px-2 py-0.5 text-[0.6rem] font-semibold text-rose-deep">{m.godparentRole}</span>}
+                {m.isOnline && <span className="ml-2 rounded-full bg-sky/50 px-2 py-0.5 text-[0.6rem] font-semibold text-ink-soft">Online</span>}
               </span>
               <button onClick={() => setEditId(m.id)} className="text-xs font-semibold text-rose-deep">Edit</button>
             </div>
@@ -207,12 +199,13 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
 
 function MemberEditor({ member, pending, onSave, onCancel, onDelete }: {
   member: Member; pending: boolean;
-  onSave: (f: { displayName: string; altNames: string[]; godparentRole: "Ninong" | "Ninang" | null }) => void;
+  onSave: (f: { displayName: string; altNames: string[]; godparentRole: "Ninong" | "Ninang" | null; isOnline: boolean }) => void;
   onCancel: () => void; onDelete: () => void;
 }) {
   const [displayName, setDisplayName] = useState(member.displayName);
   const [alt, setAlt] = useState(member.altNames.join(", "));
   const [role, setRole] = useState<string>(member.godparentRole ?? "");
+  const [online, setOnline] = useState(member.isOnline);
   return (
     <div className="rounded-md border-2 border-rose/40 bg-white px-3 py-3">
       <div className="grid gap-2 sm:grid-cols-3">
@@ -224,8 +217,12 @@ function MemberEditor({ member, pending, onSave, onCancel, onDelete }: {
           </select>
         </div>
       </div>
+      <label className="mt-3 flex items-center gap-2 text-sm text-ink">
+        <input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} className="h-4 w-4 accent-rose" />
+        Online (joining from abroad — no table/QR)
+      </label>
       <div className="mt-3 flex gap-2">
-        <button disabled={pending} onClick={() => onSave({ displayName, altNames: alt.split(",").map((s) => s.trim()).filter(Boolean), godparentRole: (role || null) as "Ninong" | "Ninang" | null })} className={btn}>Save</button>
+        <button disabled={pending} onClick={() => onSave({ displayName, altNames: alt.split(",").map((s) => s.trim()).filter(Boolean), godparentRole: (role || null) as "Ninong" | "Ninang" | null, isOnline: online })} className={btn}>Save</button>
         <button onClick={onCancel} className={btnGhost}>Cancel</button>
         <button onClick={onDelete} disabled={pending} className="ml-auto rounded-md border border-rose/40 px-3 py-1.5 text-sm font-semibold text-rose-deep">Remove</button>
       </div>

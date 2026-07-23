@@ -8,6 +8,7 @@ export type Attendance = "both" | "reception" | "ceremony" | null;
 export type GroupPass = {
   memberId: string;
   memberName: string;
+  memberIsOnline: boolean;
   group: {
     id: string;
     name: string;
@@ -16,7 +17,6 @@ export type GroupPass = {
     attendance: Attendance;
     rsvpStatus: "attending" | "declined" | "pending";
     confirmedPax: number | null;
-    isOnline: boolean;
     members: string[];
   };
 };
@@ -91,11 +91,11 @@ export async function resetPinWithAnswer(memberId: string, answer: string, newPi
 // --- Group pass (pax, table, RSVP all live on the group) ---
 export async function getGroupPass(memberId: string): Promise<GroupPass | null> {
   const sb = supabaseAdmin();
-  const { data: m } = await sb.from("guests").select("id, display_name, group_id").eq("id", memberId).maybeSingle();
+  const { data: m } = await sb.from("guests").select("id, display_name, group_id, is_online").eq("id", memberId).maybeSingle();
   if (!m || !m.group_id) return null;
   const { data: g } = await sb
     .from("groups")
-    .select("id, name, max_pax, table_number, attendance, rsvp_status, confirmed_pax, is_online")
+    .select("id, name, max_pax, table_number, attendance, rsvp_status, confirmed_pax")
     .eq("id", m.group_id)
     .maybeSingle();
   if (!g) return null;
@@ -103,6 +103,7 @@ export async function getGroupPass(memberId: string): Promise<GroupPass | null> 
   return {
     memberId: m.id,
     memberName: m.display_name,
+    memberIsOnline: Boolean(m.is_online),
     group: {
       id: g.id,
       name: g.name,
@@ -111,7 +112,6 @@ export async function getGroupPass(memberId: string): Promise<GroupPass | null> 
       attendance: (g.attendance as Attendance) ?? null,
       rsvpStatus: (g.rsvp_status as GroupPass["group"]["rsvpStatus"]) ?? "pending",
       confirmedPax: g.confirmed_pax ?? null,
-      isOnline: Boolean(g.is_online),
       members: (mem ?? []).map((x) => x.display_name),
     },
   };

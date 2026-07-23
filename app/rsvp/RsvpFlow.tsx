@@ -163,6 +163,7 @@ function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
   onSubmit: (status: "attending" | "declined", pax: number, attendance: "both" | "reception") => void; onCancel?: () => void;
 }) {
   const g = pass.pass.group;
+  const online = pass.pass.memberIsOnline;
   const others = g.members.filter((m) => m !== pass.pass.memberName);
   const [pax, setPax] = useState(g.confirmedPax && g.confirmedPax > 0 ? g.confirmedPax : g.maxPax);
   const [attendance, setAttendance] = useState<"both" | "reception">(g.attendance === "reception" ? "reception" : "both");
@@ -175,12 +176,12 @@ function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
         {g.name} invite{others.length > 0 ? ` · with ${others.join(", ")}` : ""}
       </p>
       <p className="mt-3 rounded-2xl bg-blush/40 px-4 py-2 text-sm text-ink">
-        {g.isOnline
+        {online
           ? "Your invite is joining online from abroad 🌏"
           : <>Your group has <strong className="text-rose-deep">{g.maxPax}</strong> {g.maxPax === 1 ? "seat" : "seats"} in total.</>}
       </p>
 
-      {!g.isOnline && (
+      {!online && (
         <>
           <label className={labelCls}>Which will your group attend?</label>
           <div className="mt-1 grid grid-cols-2 gap-2">
@@ -192,7 +193,7 @@ function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
         </>
       )}
 
-      <label className={labelCls}>{g.isOnline ? "How many are joining online?" : "How many of your group are coming?"}</label>
+      <label className={labelCls}>{online ? "How many are joining online?" : "How many of your group are coming?"}</label>
       <select value={pax} onChange={(e) => setPax(Number(e.target.value))} className={field}>
         {Array.from({ length: g.maxPax }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
       </select>
@@ -213,6 +214,7 @@ function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
 
 function PassCard({ pass, onEdit, onLogout }: { pass: Pass; onEdit: () => void; onLogout: () => void }) {
   const g = pass.pass.group;
+  const online = pass.pass.memberIsOnline;
   const others = g.members.filter((m) => m !== pass.pass.memberName);
   const attending = g.rsvpStatus === "attending";
   const declined = g.rsvpStatus === "declined";
@@ -225,17 +227,17 @@ function PassCard({ pass, onEdit, onLogout }: { pass: Pass; onEdit: () => void; 
       <FloralDivider className="mt-3" />
 
       <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
-        <Badge>{attending ? `Attending · ${g.confirmedPax} ${g.isOnline ? "joining" : "coming"}` : declined ? "Not attending" : "RSVP pending"}</Badge>
-        {g.isOnline ? <Badge>Joining online</Badge> : (<>{attending && attLabel && <Badge>{attLabel}</Badge>}{g.tableNumber && <Badge>Table {g.tableNumber}</Badge>}</>)}
+        <Badge>{attending ? `Attending · ${g.confirmedPax} ${online ? "joining" : "coming"}` : declined ? "Not attending" : "RSVP pending"}</Badge>
+        {online ? <Badge>Joining online</Badge> : (<>{attending && attLabel && <Badge>{attLabel}</Badge>}{g.tableNumber && <Badge>Table {g.tableNumber}</Badge>}</>)}
       </div>
 
-      {attending && g.isOnline && (
+      {attending && online && (
         <p className="mt-5 rounded-2xl bg-blush/40 px-4 py-3 text-sm text-ink">
           You&apos;re joining online from abroad 🌏 — no check-in needed. We&apos;ll share the livestream details with you.
         </p>
       )}
 
-      {attending && !g.isOnline && (
+      {attending && !online && (
         <>
           <div className="mx-auto mt-5 inline-block rounded-3xl border border-dashed border-blush-2 bg-white p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
