@@ -56,6 +56,12 @@ export const content = {
   },
   gift: {
     note: "Your presence is the greatest gift. Should you wish to give more, monetary gifts are warmly welcome.",
+    // TODO(host): set the real item + goal.
+    fund: {
+      item: "a special gift for baby Amari",
+      goalPhp: 20000,
+      blurb: "Chip in any amount — every peso brings us closer. 🎀",
+    },
     items: [
       // TODO(host): curate. Defaults keep the section from looking empty.
       "Books & keepsakes for Amari",

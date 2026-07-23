@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getContributionByReference, markContributionPaid } from "@/lib/fund";
+import { getContributionByReference, markContributionPaid, getPaidTotal } from "@/lib/fund";
 import { isCheckoutPaid } from "@/lib/paymongo";
 import FloatingHearts from "../../components/FloatingHearts";
+import FundBar from "../../components/FundBar";
 import { RibbonBow, FloralDivider } from "../../components/Decor";
+import content from "../../content";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Thank you · Amari's Baptism" };
@@ -38,8 +40,16 @@ export default async function ThankYou({
     }
   }
 
+  let raised = 0;
+  try {
+    raised = await getPaidTotal();
+  } catch {
+    raised = 0;
+  }
+  const f = content.gift.fund;
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center justify-center px-6 py-14 text-center">
+    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center justify-center gap-5 px-6 py-14 text-center">
       <FloatingHearts />
       <div className="anim-fade-up mx-auto max-w-md rounded-[26px] border border-blush-2 bg-white/70 px-6 py-10 shadow-[0_20px_50px_-30px_rgba(183,110,125,0.65)]">
         <div className="mx-auto h-20 w-28 anim-sway">
@@ -68,6 +78,8 @@ export default async function ThankYou({
           Back to the invitation
         </Link>
       </div>
+
+      <FundBar raisedPhp={raised} goalPhp={f.goalPhp} item={f.item} blurb={f.blurb} />
     </main>
   );
 }
