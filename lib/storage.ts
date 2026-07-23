@@ -43,7 +43,8 @@ export async function uploadGiftImage(file: File): Promise<string> {
 // Uploaded via a signed URL straight from the browser to Supabase, so large
 // videos don't hit Vercel's ~4.5MB request-body limit.
 const COMMUNITY_BUCKET = "community";
-export const COMMUNITY_MAX_BYTES = 80 * 1024 * 1024; // 80MB (a 30s phone clip)
+// Supabase's default per-file cap is 50MB; keep in sync with the client guard.
+export const COMMUNITY_MAX_BYTES = 50 * 1024 * 1024;
 export const COMMUNITY_ALLOWED = [
   "image/png",
   "image/jpeg",

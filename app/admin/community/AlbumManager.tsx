@@ -4,6 +4,8 @@ import * as api from "../../community/actions";
 import type { Post } from "@/lib/community";
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4", "video/quicktime", "video/webm"];
+const MAX_MB = 50;
+const MAX_BYTES = MAX_MB * 1024 * 1024;
 
 function readDuration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -38,6 +40,10 @@ export default function AlbumManager({ posts: initial }: { posts: Post[] }) {
     if (!f) return;
     setErr(null);
     if (!ALLOWED.includes(f.type)) { setErr("Please choose a photo or a short video."); return; }
+    if (f.size > MAX_BYTES) {
+      setErr(`That file is ${(f.size / 1024 / 1024).toFixed(0)}MB — the max is ${MAX_MB}MB. Try a shorter or lower-resolution clip.`);
+      return;
+    }
     if (f.type.startsWith("video/")) {
       const dur = await readDuration(f).catch(() => null);
       if (dur != null && dur > 31) { setErr("Videos must be 30 seconds or less."); return; }
@@ -57,7 +63,10 @@ export default function AlbumManager({ posts: initial }: { posts: Post[] }) {
           const up = await api.startMediaUpload(file.type);
           if (!up.ok) { setErr(up.error); return; }
           const put = await fetch(up.uploadUrl, { method: "PUT", headers: { "content-type": file.type }, body: file });
-          if (!put.ok) { setErr("Upload failed — please try again."); return; }
+          if (!put.ok) {
+            setErr(put.status === 413 ? `That file is too large (max ${MAX_MB}MB).` : "Upload failed — please try again.");
+            return;
+          }
           mediaUrl = up.publicUrl; mediaType = up.type;
         }
         const r = await api.createParentPost(author, caption, mediaUrl, mediaType);
