@@ -21,7 +21,7 @@ type Selected = { id: string; displayName: string; groupName: string | null; isO
 const field = "mt-1 w-full rounded-2xl border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const labelCls = "mt-3 block text-left text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-soft";
 
-export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken }: { initialPass: Pass | null; onPassChange?: (p: Pass | null) => void; initialInviteToken?: string | null }) {
+export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken, onGifts }: { initialPass: Pass | null; onPassChange?: (p: Pass | null) => void; initialInviteToken?: string | null; onGifts?: () => void }) {
   const [pass, setPass] = useState<Pass | null>(initialPass);
   useEffect(() => { onPassChange?.(pass); }, [pass, onPassChange]);
   const [editing, setEditing] = useState(false);
@@ -87,23 +87,24 @@ export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken
       ) : sel && sel.isOnline ? (
         <Card>
           <BackButton onClick={() => { setSel(null); setError(null); }} />
-          <div className="text-4xl">🌏</div>
-          <p className="mt-2 text-[0.6rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/70">Celebrating from afar</p>
+          <div className="text-4xl">🌏💛</div>
+          <p className="mt-2 text-[0.6rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/70">Celebrating with you from afar</p>
           <h2 className="mt-1 font-script text-4xl text-rose-deep">{sel.displayName}</h2>
           <FloralDivider className="mt-3" />
           <p className="mt-4 text-sm leading-relaxed text-ink">
-            We know you&apos;re far away, but you&apos;re right here in our hearts. 💕 On <strong className="text-rose-deep">{content.dateLong}</strong>, as
-            we gather for {content.celebrantFirst}&apos;s baptism, we&apos;ll be thinking of you and wishing you were beside us.
+            We wish more than anything that you could be here for {content.celebrantFirst}&apos;s baptism on{" "}
+            <strong className="text-rose-deep">{content.dateLong}</strong>! Even across the miles, you&apos;re family and
+            you&apos;re part of this joy. 💕
           </p>
-          <div className="mt-4 rounded-2xl bg-blush/40 px-4 py-3 text-left text-sm">
-            <p className="font-semibold text-rose-deep">You&apos;re part of the day 🕊️</p>
-            <p className="mt-1 leading-relaxed text-ink-soft">
-              We&apos;ll send you the livestream link so you can watch the ceremony live and celebrate with us in real time.
-              No RSVP needed — we&apos;ve already saved you a place in spirit.
-            </p>
-          </div>
-          <p className="mt-4 text-sm text-ink-soft">Sending all our love across the miles. 🎀</p>
-          <p className="mt-6 text-center text-xs text-ink-soft"><Link href="/" className="underline">← Back to the invitation</Link></p>
+          <p className="mt-3 text-sm leading-relaxed text-ink">
+            We&apos;ll be raising a toast to you — and we can&apos;t wait to share every photo and hug the next time we&apos;re together.
+            No RSVP needed; just celebrate with us from wherever you are! 🎀
+          </p>
+          <button onClick={() => (onGifts ? onGifts() : (window.location.href = "/"))}
+            className="hover-lift mt-6 w-full rounded-full bg-rose px-6 py-3 font-semibold text-white shadow-[0_14px_30px_-16px_rgba(183,110,125,0.9)]">
+            See gifts &amp; registry
+          </button>
+          <p className="mt-4 text-center text-xs text-ink-soft"><Link href="/" className="underline">← Back to the invitation</Link></p>
         </Card>
       ) : sel ? (
         <Card>
@@ -259,7 +260,7 @@ function PassCard({ pass, onEdit, onLogout }: { pass: Pass; onEdit: () => void; 
 
       {attending && p.isOnline && (
         <p className="mt-5 rounded-2xl bg-blush/40 px-4 py-3 text-sm text-ink">
-          You&apos;re joining online from abroad 🌏 — no check-in needed. We&apos;ll share the livestream details with you.
+          You&apos;re celebrating with us from abroad 🌏 — no check-in needed. We can&apos;t wait to share the day with you! 💕
         </p>
       )}
       {attending && !p.isOnline && (
@@ -285,11 +286,14 @@ function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border border-blush-2 bg-blush/60 px-3 py-1 font-semibold text-rose-deep">{children}</span>;
 }
 
-function memberStatusLabel(m: api.GroupMemberRsvp): string {
-  if (m.isOnline) return "Abroad — celebrating online 🌏";
-  if (m.rsvpStatus === "attending") return m.attendance === "reception" ? "Coming · Reception only" : "Coming · Ceremony + Reception";
-  if (m.rsvpStatus === "declined") return "Not coming";
-  return "No response yet";
+function MemberStatusChip({ m }: { m: api.GroupMemberRsvp }) {
+  if (m.isOnline)
+    return <span className="rounded-full bg-blush/70 px-2.5 py-0.5 text-[0.68rem] font-semibold text-rose-deep">🌏 Abroad</span>;
+  if (m.rsvpStatus === "attending")
+    return <span className="rounded-full bg-rose px-2.5 py-0.5 text-[0.68rem] font-semibold text-white">✓ Coming</span>;
+  if (m.rsvpStatus === "declined")
+    return <span className="rounded-full bg-ink-soft/15 px-2.5 py-0.5 text-[0.68rem] font-semibold text-ink-soft">Not coming</span>;
+  return <span className="rounded-full border border-rose/40 px-2.5 py-0.5 text-[0.68rem] font-semibold text-rose-deep">Needs a reply</span>;
 }
 
 function GroupPanel({ meId, onChanged }: { meId: string; onChanged?: () => void }) {
@@ -323,51 +327,74 @@ function GroupPanel({ meId, onChanged }: { meId: string; onChanged?: () => void 
 
   if (!group || group.members.length <= 1) return null;
 
-  const chip = (active: boolean) =>
-    `rounded-full border px-3 py-1 text-xs font-semibold transition ${active ? "border-rose bg-rose text-white" : "border-blush-2 bg-white text-rose-deep"}`;
+  const OPTIONS = [
+    { key: "both", label: "Ceremony + Reception", status: "attending" as const, attendance: "both" as const },
+    { key: "reception", label: "Reception only", status: "attending" as const, attendance: "reception" as const },
+    { key: "declined", label: "Can't make it", status: "declined" as const, attendance: "both" as const },
+  ];
+  const isActive = (m: api.GroupMemberRsvp, key: string) =>
+    key === "declined" ? m.rsvpStatus === "declined"
+      : key === "reception" ? m.rsvpStatus === "attending" && m.attendance === "reception"
+      : m.rsvpStatus === "attending" && m.attendance !== "reception";
 
   return (
-    <div className="anim-fade-up mx-auto mt-5 max-w-md rounded-[26px] border border-blush-2 bg-white/70 px-6 py-6 text-left shadow-[0_20px_50px_-30px_rgba(183,110,125,0.6)]">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-display text-xl italic text-rose-deep">Your group</h3>
-        {group.groupName && <span className="text-xs text-ink-soft">{group.groupName}</span>}
+    <div className="anim-fade-up mx-auto mt-6 max-w-md overflow-hidden rounded-[26px] border border-rose/30 bg-white/80 shadow-[0_22px_54px_-28px_rgba(183,110,125,0.7)]">
+      <div className="bg-gradient-to-r from-rose to-rose-deep px-6 py-4 text-white">
+        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.28em] text-white/80">Your group</p>
+        <h3 className="font-script text-3xl leading-tight">{group.groupName ?? "Your invite"}</h3>
+        <p className="mt-0.5 text-xs text-white/85">Answer for everyone, or send each person their own link.</p>
       </div>
-      <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-        RSVP for yourself, for anyone here, or for everyone at once. Send each person their private link so they can set
-        their own PIN — no name search needed.
-      </p>
 
-      <button onClick={rsvpAll} disabled={pending}
-        className="hover-lift mt-3 w-full rounded-full bg-rose px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_26px_-16px_rgba(183,110,125,0.9)] disabled:opacity-60">
-        Everyone&apos;s coming · Ceremony + Reception
-      </button>
+      <div className="px-5 py-5">
+        <button onClick={rsvpAll} disabled={pending}
+          className="hover-lift w-full rounded-2xl border border-rose bg-blush/50 px-5 py-3 text-sm font-semibold text-rose-deep disabled:opacity-60">
+          ✓ Mark everyone coming (Ceremony + Reception)
+        </button>
 
-      <div className="mt-4 space-y-2">
-        {group.members.map((m) => (
-          <div key={m.id} className="rounded-2xl border border-blush-2 bg-white px-3.5 py-3">
-            <p className="text-sm font-semibold text-ink">
-              {m.name}{m.id === meId ? " (you)" : ""}
-              {m.godparentRole && <span className="ml-1 text-rose-deep">· {m.godparentRole} 🕊️</span>}
-            </p>
-            <p className="mt-0.5 text-xs text-ink-soft">{memberStatusLabel(m)}</p>
-            {!m.isOnline && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <button onClick={() => setFor(m.id, "attending", "both")} disabled={pending}
-                  className={chip(m.rsvpStatus === "attending" && m.attendance !== "reception")}>Coming</button>
-                <button onClick={() => setFor(m.id, "attending", "reception")} disabled={pending}
-                  className={chip(m.rsvpStatus === "attending" && m.attendance === "reception")}>Reception only</button>
-                <button onClick={() => setFor(m.id, "declined", "both")} disabled={pending}
-                  className={chip(m.rsvpStatus === "declined")}>Can&apos;t</button>
-                <button onClick={() => copyLink(m.inviteToken, m.id)}
-                  className="ml-auto rounded-full border border-blush-2 bg-white px-3 py-1 text-xs font-semibold text-rose-deep">
-                  {copied === m.id ? "Copied ✓" : "Copy link"}
-                </button>
+        <div className="mt-4 space-y-3">
+          {group.members.map((m) => (
+            <div key={m.id} className="rounded-2xl border border-blush-2 bg-white px-4 py-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-[0.95rem] font-semibold text-ink">
+                  {m.name}{m.id === meId ? " (you)" : ""}
+                  {m.godparentRole && <span className="ml-1 font-normal text-rose-deep">· {m.godparentRole} 🕊️</span>}
+                </p>
+                <MemberStatusChip m={m} />
               </div>
-            )}
-          </div>
-        ))}
+
+              {m.isOnline ? (
+                <p className="mt-1.5 text-xs text-ink-soft">Abroad — counted out, no RSVP needed 🌏</p>
+              ) : (
+                <>
+                  <p className="mt-2.5 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-ink-soft">
+                    Will {m.id === meId ? "you" : m.name} attend?
+                  </p>
+                  <div className="mt-1.5 grid gap-1.5">
+                    {OPTIONS.map((o) => {
+                      const active = isActive(m, o.key);
+                      return (
+                        <button key={o.key} disabled={pending}
+                          onClick={() => setFor(m.id, o.status, o.attendance)}
+                          className={`flex items-center justify-between rounded-xl border px-3.5 py-2 text-sm font-semibold transition ${
+                            active ? "border-rose bg-rose text-white" : "border-blush-2 bg-white text-rose-deep"
+                          }`}>
+                          {o.label}
+                          {active && <span>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => copyLink(m.inviteToken, m.id)}
+                    className="mt-2 w-full rounded-xl border border-dashed border-rose/40 bg-blush/20 px-3 py-2 text-xs font-semibold text-rose-deep">
+                    {copied === m.id ? "Link copied ✓ — paste it to them" : `🔗 Copy ${m.id === meId ? "your" : m.name + "'s"} private invite link`}
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        {msg && <p className="mt-3 text-sm text-rose-deep">{msg}</p>}
       </div>
-      {msg && <p className="mt-3 text-sm text-rose-deep">{msg}</p>}
     </div>
   );
 }

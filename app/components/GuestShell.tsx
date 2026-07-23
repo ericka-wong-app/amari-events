@@ -60,7 +60,7 @@ export default function GuestShell({
 
         <div className={tab === "rsvp" ? "" : "hidden"}>
           <section className="px-6 py-12">
-            <RsvpFlow initialPass={pass} onPassChange={onPassChange} initialInviteToken={inviteToken} />
+            <RsvpFlow initialPass={pass} onPassChange={onPassChange} initialInviteToken={inviteToken} onGifts={() => setTab("gifts")} />
           </section>
         </div>
 
