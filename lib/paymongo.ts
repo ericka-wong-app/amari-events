@@ -36,8 +36,13 @@ export async function createCheckoutSession(input: CheckoutInput): Promise<Check
         quantity: 1,
       },
     ],
-    // Omitting payment_method_types → PayMongo offers whatever the account has
-    // enabled/approved (avoids "no payment methods available").
+    // Required by PayMongo. Methods only appear at checkout if they're enabled
+    // on the account (Settings → Payment Methods). Configurable via env so you
+    // can adjust without a code change.
+    payment_method_types: (process.env.PAYMONGO_METHODS ?? "card,gcash,paymaya")
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean),
     description: input.description,
     reference_number: input.reference,
     success_url: input.successUrl,
