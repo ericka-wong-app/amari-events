@@ -4,31 +4,23 @@ import { supabaseAdmin } from "@/lib/supabase";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// TEMPORARY diagnostic: runs the exact contribution insert and reports the raw
-// result so we can see why writes fail while reads succeed. Guarded. Remove after.
+// TEMPORARY: read recent contributions to confirm a payment registered.
+// Guarded. Remove after debugging.
 export async function GET(req: Request) {
   if (new URL(req.url).searchParams.get("key") !== process.env.QR_SIGNING_SECRET) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   const sb = supabaseAdmin();
-  const urlMasked = (process.env.SUPABASE_URL ?? "").replace(/^https:\/\/([a-z0-9]{6}).*/, "https://$1…");
-
-  const sel = await sb.from("contributions").select("*", { count: "exact", head: true });
-  const ins = await sb
+  const { data, error } = await sb
     .from("contributions")
-    .insert({ amount_php: 1, reference: `diag-${Date.now()}`, status: "pending" })
-    .select("id")
-    .maybeSingle();
+    .select("amount_php, name, message, status, checkout_id, created_at, paid_at")
+    .order("created_at", { ascending: false })
+    .limit(8);
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
-  let deleted = false;
-  if (ins.data?.id) {
-    const del = await sb.from("contributions").delete().eq("id", ins.data.id);
-    deleted = !del.error;
-  }
+  const paidTotal = (data ?? [])
+    .filter((c) => c.status === "paid")
+    .reduce((s, c) => s + (c.amount_php ?? 0), 0);
 
-  return NextResponse.json({
-    supabaseUrl: urlMasked,
-    select: { error: sel.error?.message ?? null, count: sel.count ?? null },
-    insert: { error: ins.error?.message ?? null, id: ins.data?.id ?? null, deleted },
-  });
+  return NextResponse.json({ ok: true, count: data?.length ?? 0, paidTotal, contributions: data });
 }
