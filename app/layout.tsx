@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Dancing_Script, Nunito } from "next/font/google";
 import "./globals.css";
+import { getSiteMeta } from "@/lib/event-details";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
@@ -19,11 +20,16 @@ const body = Nunito({
   weight: ["300", "400", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "Amari's Baptism · July 26, 2026",
-  description:
-    "Join us for the baptism of Amari Wong — Sunday, July 26, 2026 at St. Benedict Parish, with reception to follow at Okairi.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const meta = await getSiteMeta();
+  const images = meta.ogImageUrl ? [{ url: meta.ogImageUrl }] : undefined;
+  return {
+    title: meta.title,
+    description: meta.description,
+    openGraph: { title: meta.title, description: meta.description, images, type: "website" },
+    twitter: { card: meta.ogImageUrl ? "summary_large_image" : "summary", title: meta.title, description: meta.description, images: meta.ogImageUrl ? [meta.ogImageUrl] : undefined },
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

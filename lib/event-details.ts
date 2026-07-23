@@ -115,3 +115,47 @@ export async function removeVenuePhoto(venue: VenueKey, url: string): Promise<vo
     );
   if (error) throw new Error(error.message);
 }
+
+// --- Link preview / SEO (title, description, share image) ---
+export type SiteMeta = { title: string; description: string; ogImageUrl: string | null };
+
+const META_DEFAULT: SiteMeta = {
+  title: `${content.celebrant}'s Baptism · ${content.dateLong}`,
+  description: content.intro,
+  ogImageUrl: null,
+};
+
+export async function getSiteMeta(): Promise<SiteMeta> {
+  try {
+    const sb = supabaseAdmin();
+    const { data, error } = await sb
+      .from("event_details")
+      .select("seo_title, seo_description, og_image_url")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error || !data) return META_DEFAULT;
+    const r = data as { seo_title: string | null; seo_description: string | null; og_image_url: string | null };
+    return {
+      title: r.seo_title?.trim() || META_DEFAULT.title,
+      description: r.seo_description?.trim() || META_DEFAULT.description,
+      ogImageUrl: r.og_image_url ?? null,
+    };
+  } catch {
+    return META_DEFAULT;
+  }
+}
+
+export async function updateSiteMeta(m: SiteMeta): Promise<void> {
+  const sb = supabaseAdmin();
+  const { error } = await sb.from("event_details").upsert(
+    {
+      id: 1,
+      seo_title: m.title.trim() || null,
+      seo_description: m.description.trim() || null,
+      og_image_url: m.ogImageUrl?.trim() || null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" }
+  );
+  if (error) throw new Error(error.message);
+}

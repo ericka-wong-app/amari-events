@@ -1,8 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { EventDetails, VenueKey } from "@/lib/event-details";
-import { saveDetails, addPhoto, removePhoto } from "./actions";
+import type { EventDetails, VenueKey, SiteMeta } from "@/lib/event-details";
+import { saveDetails, addPhoto, removePhoto, saveSeo } from "./actions";
 
 const input = "w-full rounded-lg border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const label = "block text-[0.62rem] font-semibold uppercase tracking-wide text-ink-soft";
@@ -16,7 +16,7 @@ async function uploadImage(file: File): Promise<string> {
   return j.url as string;
 }
 
-export default function DetailsManager({ details }: { details: EventDetails }) {
+export default function DetailsManager({ details, meta }: { details: EventDetails; meta: SiteMeta }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -28,7 +28,27 @@ export default function DetailsManager({ details }: { details: EventDetails }) {
   const [rAddr, setRAddr] = useState(details.reception.address);
   const [rTime, setRTime] = useState(details.reception.time);
 
+  const [seoTitle, setSeoTitle] = useState(meta.title);
+  const [seoDesc, setSeoDesc] = useState(meta.description);
+  const [ogImg, setOgImg] = useState<string | null>(meta.ogImageUrl);
+  const [ogUploading, setOgUploading] = useState(false);
+
   const refresh = () => router.refresh();
+
+  async function onOgFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setMsg(null); setOgUploading(true);
+    try { setOgImg(await uploadImage(file)); } catch (ex) { setMsg((ex as Error).message); } finally { setOgUploading(false); }
+  }
+  function saveSeoData() {
+    setMsg(null);
+    start(async () => {
+      const r = await saveSeo({ title: seoTitle, description: seoDesc, ogImageUrl: ogImg });
+      if (r.ok) { setMsg("Link preview saved ✓"); refresh(); } else setMsg(r.error);
+    });
+  }
 
   function save() {
     setMsg(null);
@@ -69,6 +89,30 @@ export default function DetailsManager({ details }: { details: EventDetails }) {
         </button>
         {msg && <span className="text-sm text-rose-deep">{msg}</span>}
       </div>
+
+      <section className="rounded-2xl border border-blush-2 bg-white px-5 py-5">
+        <h2 className="font-display text-xl italic text-rose-deep">Link preview (when you share the site)</h2>
+        <p className="mt-1 text-sm text-ink-soft">This is the title, text, and image people see when the link is shared on Messenger, Viber, iMessage, etc.</p>
+        <div className="mt-3 grid gap-3">
+          <div><span className={label}>Title</span><input value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} className={input} /></div>
+          <div><span className={label}>Description</span><textarea value={seoDesc} onChange={(e) => setSeoDesc(e.target.value)} rows={2} className={`${input} resize-none`} /></div>
+          <div>
+            <span className={label}>Share image (PNG or JPEG — landscape looks best)</span>
+            <div className="mt-1 flex items-center gap-3">
+              {ogImg ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={ogImg} alt="" className="h-16 w-28 rounded-lg object-cover" />
+              ) : (
+                <div className="grid h-16 w-28 place-items-center rounded-lg bg-blush text-[0.6rem] font-semibold text-ink-soft">1200×630</div>
+              )}
+              <input type="file" accept="image/png,image/jpeg" onChange={onOgFile} className="text-sm" />
+              {ogUploading && <span className="text-xs text-ink-soft">uploading…</span>}
+              {ogImg && <button type="button" onClick={() => setOgImg(null)} className="text-xs text-rose-deep underline">remove</button>}
+            </div>
+          </div>
+        </div>
+        <button disabled={pending || ogUploading} onClick={saveSeoData} className="mt-3 rounded-lg bg-rose px-5 py-2 text-sm font-semibold text-white disabled:opacity-60">Save link preview</button>
+      </section>
     </div>
   );
 }

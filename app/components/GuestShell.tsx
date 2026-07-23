@@ -1,13 +1,16 @@
 "use client";
 import { useCallback, useState } from "react";
 import RsvpFlow from "../rsvp/RsvpFlow";
+import CommunityTab from "./CommunityTab";
 import type { Pass } from "../rsvp/actions";
+import type { Post } from "@/lib/community";
 
-type Tab = "home" | "rsvp" | "details" | "gifts";
+type Tab = "home" | "rsvp" | "album" | "details" | "gifts";
 
 const ICONS: Record<Tab, React.ReactNode> = {
   home: <path d="M4 11.5 12 4l8 7.5M6 10v9h12v-9" />,
   rsvp: <path d="M4 6h16v12H4zM4 7l8 6 8-6" />,
+  album: <path d="M4 8h3l1.5-2h7L17 8h3v11H4zM12 16.5a3 3 0 100-6 3 3 0 000 6z" />,
   details: <path d="M5 4h14v16H5zM8 3v3M16 3v3M5 9h14" />,
   gifts: <path d="M4 9h16v11H4zM3 6h18v3H3zM12 6v14M12 6S9 2 7 4s2 2 5 2M12 6s3-4 5-2-2 2-5 2" />,
 };
@@ -21,12 +24,14 @@ export default function GuestShell({
   details,
   gifts,
   inviteToken,
+  initialPosts,
 }: {
   initialPass: Pass | null;
   hero: React.ReactNode;
   details: React.ReactNode;
   gifts: React.ReactNode;
   inviteToken?: string | null;
+  initialPosts: Post[];
 }) {
   const [pass, setPass] = useState<Pass | null>(initialPass);
   const [tab, setTab] = useState<Tab>(inviteToken && !initialPass ? "rsvp" : "home");
@@ -34,8 +39,8 @@ export default function GuestShell({
   const onPassChange = useCallback((p: Pass | null) => setPass(p), []);
 
   const nav: { key: Tab; label: string }[] = loggedIn
-    ? [{ key: "home", label: "Home" }, { key: "rsvp", label: "My Pass" }, { key: "details", label: "Details" }, { key: "gifts", label: "Gifts" }]
-    : [{ key: "home", label: "Home" }, { key: "rsvp", label: "RSVP" }, { key: "gifts", label: "Gifts" }];
+    ? [{ key: "home", label: "Home" }, { key: "rsvp", label: "My Pass" }, { key: "album", label: "Album" }, { key: "details", label: "Details" }, { key: "gifts", label: "Gifts" }]
+    : [{ key: "home", label: "Home" }, { key: "rsvp", label: "RSVP" }, { key: "album", label: "Album" }, { key: "gifts", label: "Gifts" }];
 
   return (
     <>
@@ -46,12 +51,14 @@ export default function GuestShell({
             {loggedIn ? (
               <>
                 <button onClick={() => setTab("rsvp")} className={ctaPrimary}>View my pass</button>
+                <button onClick={() => setTab("album")} className={ctaGhost}>Shared album 📷</button>
                 <button onClick={() => setTab("details")} className={ctaGhost}>Baptism details &amp; map</button>
                 <button onClick={() => setTab("gifts")} className={ctaGhost}>Gifts &amp; registry</button>
               </>
             ) : (
               <>
                 <button onClick={() => setTab("rsvp")} className={ctaPrimary}>RSVP / Log in</button>
+                <button onClick={() => setTab("album")} className={ctaGhost}>Shared album 📷</button>
                 <button onClick={() => setTab("gifts")} className={ctaGhost}>Gifts &amp; registry</button>
               </>
             )}
@@ -62,6 +69,15 @@ export default function GuestShell({
           <section className="px-6 py-12">
             <RsvpFlow initialPass={pass} onPassChange={onPassChange} initialInviteToken={inviteToken} onGifts={() => setTab("gifts")} />
           </section>
+        </div>
+
+        <div className={tab === "album" ? "" : "hidden"}>
+          <CommunityTab
+            initialPosts={initialPosts}
+            loggedIn={loggedIn}
+            viewerGuestId={pass?.pass.memberId ?? null}
+            onLoginNeeded={() => setTab("rsvp")}
+          />
         </div>
 
         <div className={tab === "details" ? "" : "hidden"}>

@@ -6,9 +6,11 @@ import Details from "./components/Details";
 import Directions from "./components/Directions";
 import GiftsTab from "./components/GiftsTab";
 import { myPass, type Pass } from "./rsvp/actions";
+import { loadFeed } from "./community/actions";
 import { getPaidTotal } from "@/lib/fund";
 import { getFund, listGiftItems, type GiftItem } from "@/lib/gift-admin";
 import { getEventDetails } from "@/lib/event-details";
+import type { Post } from "@/lib/community";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ i
   } catch {
     items = [];
   }
+  let posts: Post[] = [];
+  try {
+    posts = await loadFeed();
+  } catch {
+    posts = [];
+  }
 
   return (
     <>
@@ -44,6 +52,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ i
       <GuestShell
         initialPass={initialPass}
         inviteToken={inviteToken}
+        initialPosts={posts}
         hero={<Hero />}
         details={
           <>

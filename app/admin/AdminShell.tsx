@@ -7,6 +7,7 @@ const NAV = [
   { href: "/admin/details", label: "Details" },
   { href: "/admin/godparents", label: "Ninong & Ninang" },
   { href: "/admin/checkin", label: "Check-in" },
+  { href: "/admin/community", label: "Album" },
   { href: "/admin/gifts", label: "Gifts" },
   { href: "/admin/team", label: "Admins" },
 ];

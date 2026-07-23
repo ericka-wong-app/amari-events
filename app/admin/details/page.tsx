@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/admin";
-import { getEventDetails } from "@/lib/event-details";
+import { getEventDetails, getSiteMeta } from "@/lib/event-details";
 import { supabaseAdmin } from "@/lib/supabase";
 import AdminShell from "../AdminShell";
 import DetailsManager from "./DetailsManager";
@@ -11,9 +11,10 @@ export const metadata: Metadata = { title: "Details · Admin" };
 export default async function AdminDetailsPage() {
   await requireAdmin();
 
-  const { error } = await supabaseAdmin().from("event_details").select("id").limit(1);
+  const { error } = await supabaseAdmin().from("event_details").select("id, seo_title").limit(1);
   const tableError = error?.message ?? null;
   const details = await getEventDetails();
+  const meta = await getSiteMeta();
 
   return (
     <AdminShell title="Baptism Details" active="/admin/details">
@@ -27,13 +28,18 @@ export default async function AdminDetailsPage() {
   reception_venue text, reception_address text, reception_time text,
   church_photos text[] not null default '{}',
   reception_photos text[] not null default '{}',
+  seo_title text, seo_description text, og_image_url text,
   updated_at timestamptz not null default now(),
   constraint event_details_singleton check (id = 1)
 );
-alter table event_details enable row level security;`}</pre>
+alter table event_details enable row level security;
+-- If the table already exists, add the new columns:
+alter table event_details add column if not exists seo_title text;
+alter table event_details add column if not exists seo_description text;
+alter table event_details add column if not exists og_image_url text;`}</pre>
         </div>
       ) : (
-        <DetailsManager details={details} />
+        <DetailsManager details={details} meta={meta} />
       )}
     </AdminShell>
   );

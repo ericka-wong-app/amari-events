@@ -5,11 +5,23 @@ import {
   updateEventDetails,
   addVenuePhoto,
   removeVenuePhoto,
+  updateSiteMeta,
   type EventDetailsInput,
   type VenueKey,
+  type SiteMeta,
 } from "@/lib/event-details";
 
 type Res = { ok: true } | { ok: false; error: string };
+
+export async function saveSeo(m: SiteMeta): Promise<Res> {
+  await requireAdmin();
+  try {
+    await updateSiteMeta(m);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
 
 export async function saveDetails(f: EventDetailsInput): Promise<Res> {
   await requireAdmin();

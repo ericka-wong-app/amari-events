@@ -26,6 +26,7 @@ export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken
   useEffect(() => { onPassChange?.(pass); }, [pass, onPassChange]);
   const [editing, setEditing] = useState(false);
   const [sel, setSel] = useState<Selected | null>(null);
+  const [onlineJoin, setOnlineJoin] = useState(false);
   const inviteHandled = useRef(false);
   const [burst, setBurst] = useState(0);
   const [pending, start] = useTransition();
@@ -57,12 +58,13 @@ export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken
 
   function onAuthed(r: Awaited<ReturnType<typeof api.login>>) {
     if (!r.ok) return setError(r.error);
-    setSel(null); setPin(""); setAnswer(""); setForgot(false);
+    setSel(null); setOnlineJoin(false); setPin(""); setAnswer(""); setForgot(false);
     setPass(r.pass);
-    setEditing(r.pass.pass.rsvpStatus === "pending");
+    // Online guests don't need to RSVP — don't force the form open for them.
+    setEditing(!r.pass.pass.isOnline && r.pass.pass.rsvpStatus === "pending");
   }
   function fullReset() {
-    setPass(null); setEditing(false); setSel(null); setHits(null); setQuery(""); setPin(""); setForgot(false); setError(null);
+    setPass(null); setEditing(false); setSel(null); setOnlineJoin(false); setHits(null); setQuery(""); setPin(""); setForgot(false); setError(null);
   }
 
   return (
@@ -84,7 +86,7 @@ export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken
             onLogout={() => run(async () => { await api.logout(); fullReset(); })} />
           <GroupPanel meId={pass.pass.memberId} onChanged={refreshPass} />
         </>
-      ) : sel && sel.isOnline ? (
+      ) : sel && sel.isOnline && !onlineJoin ? (
         <Card>
           <BackButton onClick={() => { setSel(null); setError(null); }} />
           <div className="text-4xl">🌏💛</div>
@@ -101,15 +103,20 @@ export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken
             We&apos;ll be raising a toast to you — and we can&apos;t wait to share every photo and hug the next time we&apos;re together.
             No RSVP needed; just celebrate with us from wherever you are! 🎀
           </p>
-          <button onClick={() => (onGifts ? onGifts() : (window.location.href = "/"))}
+          <button onClick={() => { setError(null); setOnlineJoin(true); }}
             className="hover-lift mt-6 w-full rounded-full bg-rose px-6 py-3 font-semibold text-white shadow-[0_14px_30px_-16px_rgba(183,110,125,0.9)]">
+            Join the live album 📷
+          </button>
+          <p className="mt-1 text-xs text-ink-soft">See &amp; share photos and videos from the day — set a quick PIN to post.</p>
+          <button onClick={() => (onGifts ? onGifts() : (window.location.href = "/"))}
+            className="mt-3 w-full rounded-full border border-rose bg-white px-6 py-2.5 font-semibold text-rose-deep">
             See gifts &amp; registry
           </button>
           <p className="mt-4 text-center text-xs text-ink-soft"><Link href="/" className="underline">← Back to the invitation</Link></p>
         </Card>
       ) : sel ? (
         <Card>
-          <BackButton onClick={() => { setSel(null); setError(null); setPin(""); setForgot(false); }} />
+          <BackButton onClick={() => { if (sel.isOnline) { setOnlineJoin(false); } else { setSel(null); } setError(null); setPin(""); setForgot(false); }} />
           <h2 className="font-script text-4xl text-rose-deep">{sel.displayName}</h2>
           {sel.groupName && <p className="mt-1 text-xs text-ink-soft">Part of the {sel.groupName} invite</p>}
 
