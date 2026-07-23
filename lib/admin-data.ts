@@ -1,26 +1,36 @@
 import { supabaseAdmin } from "./supabase";
 
-export type AdminGuest = {
+// The GROUP is the invite unit: it holds pax, table, and RSVP.
+// Members are the individual people in the group (each can log in).
+
+export type Member = {
   id: string;
   displayName: string;
   altNames: string[];
-  maxPax: number;
-  tableNumber: string | null;
-  groupId: string | null;
-  groupName: string | null;
   godparentRole: "Ninong" | "Ninang" | null;
-  rsvpStatus: "attending" | "declined" | "pending";
-  confirmedPax: number | null;
   checkedIn: boolean;
 };
 
+export type Attendance = "both" | "reception" | "ceremony" | null;
+
+export type Group = {
+  id: string;
+  name: string;
+  maxPax: number;
+  tableNumber: string | null;
+  rsvpStatus: "attending" | "declined" | "pending";
+  confirmedPax: number | null;
+  attendance: Attendance;
+  members: Member[];
+};
+
 export type AdminStats = {
-  invited: number;
+  groups: number;
   attending: number;
   declined: number;
   pending: number;
   confirmedPax: number;
-  checkedIn: number;
+  people: number;
   paidTotalPhp: number;
 };
 
@@ -29,109 +39,127 @@ function one<T>(v: T | T[] | null | undefined): T | null {
   return Array.isArray(v) ? (v[0] ?? null) : v;
 }
 
-type Row = {
+type MemberRow = {
   id: string;
   display_name: string;
   alt_names: string[] | null;
+  godparent_role: "Ninong" | "Ninang" | null;
+  checkins: { checked_in_at: string } | { checked_in_at: string }[] | null;
+};
+type GroupRow = {
+  id: string;
+  name: string;
   max_pax: number;
   table_number: string | null;
-  group_id: string | null;
-  godparent_role: "Ninong" | "Ninang" | null;
-  groups: { name: string } | { name: string }[] | null;
-  rsvps: { status: string; confirmed_pax: number | null } | { status: string; confirmed_pax: number | null }[] | null;
-  checkins: { checked_in_at: string } | { checked_in_at: string }[] | null;
+  rsvp_status: string;
+  confirmed_pax: number | null;
+  attendance: string | null;
+  guests: MemberRow[] | null;
 };
 
 const SELECT =
-  "id, display_name, alt_names, max_pax, table_number, group_id, godparent_role, groups(name), rsvps(status, confirmed_pax), checkins(checked_in_at)";
+  "id, name, max_pax, table_number, rsvp_status, confirmed_pax, attendance, guests(id, display_name, alt_names, godparent_role, checkins(checked_in_at))";
 
-function toGuest(r: Row): AdminGuest {
-  const rsvp = one(r.rsvps);
+function toGroup(r: GroupRow): Group {
   return {
     id: r.id,
-    displayName: r.display_name,
-    altNames: r.alt_names ?? [],
+    name: r.name,
     maxPax: r.max_pax,
     tableNumber: r.table_number,
-    groupId: r.group_id,
-    groupName: one(r.groups)?.name ?? null,
-    godparentRole: r.godparent_role,
-    rsvpStatus: (rsvp?.status as AdminGuest["rsvpStatus"]) ?? "pending",
-    confirmedPax: rsvp?.confirmed_pax ?? null,
-    checkedIn: Boolean(one(r.checkins)),
+    rsvpStatus: (r.rsvp_status as Group["rsvpStatus"]) ?? "pending",
+    confirmedPax: r.confirmed_pax,
+    attendance: (r.attendance as Group["attendance"]) ?? null,
+    members: (r.guests ?? [])
+      .map((m) => ({
+        id: m.id,
+        displayName: m.display_name,
+        altNames: m.alt_names ?? [],
+        godparentRole: m.godparent_role,
+        checkedIn: Boolean(one(m.checkins)),
+      }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName)),
   };
 }
 
-export async function listGuests(): Promise<AdminGuest[]> {
+export async function listGroups(): Promise<Group[]> {
   const sb = supabaseAdmin();
-  const { data, error } = await sb.from("guests").select(SELECT).order("display_name");
+  const { data, error } = await sb.from("groups").select(SELECT).order("name");
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Row[]).map(toGuest);
+  return ((data ?? []) as GroupRow[]).map(toGroup);
 }
 
 export async function getStats(): Promise<AdminStats> {
-  const guests = await listGuests();
+  const groups = await listGroups();
   const sb = supabaseAdmin();
   const { data: paid } = await sb.from("contributions").select("amount_php").eq("status", "paid");
   const paidTotalPhp = (paid ?? []).reduce((s, r) => s + (r.amount_php ?? 0), 0);
   return {
-    invited: guests.length,
-    attending: guests.filter((g) => g.rsvpStatus === "attending").length,
-    declined: guests.filter((g) => g.rsvpStatus === "declined").length,
-    pending: guests.filter((g) => g.rsvpStatus === "pending").length,
-    confirmedPax: guests.filter((g) => g.rsvpStatus === "attending").reduce((s, g) => s + (g.confirmedPax ?? 0), 0),
-    checkedIn: guests.filter((g) => g.checkedIn).length,
+    groups: groups.length,
+    attending: groups.filter((g) => g.rsvpStatus === "attending").length,
+    declined: groups.filter((g) => g.rsvpStatus === "declined").length,
+    pending: groups.filter((g) => g.rsvpStatus === "pending").length,
+    confirmedPax: groups.filter((g) => g.rsvpStatus === "attending").reduce((s, g) => s + (g.confirmedPax ?? 0), 0),
+    people: groups.reduce((s, g) => s + g.members.length, 0),
     paidTotalPhp,
   };
 }
 
-async function resolveGroupId(groupName: string | null): Promise<string | null> {
-  const name = groupName?.trim();
-  if (!name) return null;
+// ---- Groups ----
+export async function createGroup(name: string, maxPax: number): Promise<string> {
+  const n = name.trim();
+  if (!n) throw new Error("Group name is required.");
   const sb = supabaseAdmin();
-  const { data: existing } = await sb.from("groups").select("id").ilike("name", name).maybeSingle();
-  if (existing) return existing.id;
-  const { data: created, error } = await sb.from("groups").insert({ name }).select("id").single();
+  const { data, error } = await sb.from("groups").insert({ name: n, max_pax: Math.max(1, maxPax) }).select("id").single();
   if (error) throw new Error(error.message);
-  return created.id;
+  return data.id;
 }
 
-export async function createGuest(displayName: string): Promise<void> {
+export async function updateGroup(
+  id: string,
+  fields: { name: string; maxPax: number; tableNumber: string | null }
+): Promise<void> {
+  const sb = supabaseAdmin();
+  const { error } = await sb
+    .from("groups")
+    .update({ name: fields.name.trim(), max_pax: Math.max(1, fields.maxPax), table_number: fields.tableNumber?.trim() || null })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteGroup(id: string): Promise<void> {
+  const sb = supabaseAdmin();
+  // remove members first (guests reference the group)
+  await sb.from("guests").delete().eq("group_id", id);
+  const { error } = await sb.from("groups").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// ---- Members ----
+export async function addMember(groupId: string, displayName: string): Promise<void> {
   const name = displayName.trim();
   if (!name) throw new Error("Name is required.");
   const sb = supabaseAdmin();
-  const { error } = await sb.from("guests").insert({ display_name: name, max_pax: 1 });
+  const { error } = await sb.from("guests").insert({ group_id: groupId, display_name: name, max_pax: 1 });
   if (error) throw new Error(error.message);
 }
 
-export async function updateGuest(
+export async function updateMember(
   id: string,
-  fields: {
-    displayName: string;
-    altNames: string[];
-    maxPax: number;
-    tableNumber: string | null;
-    groupName: string | null;
-    godparentRole: "Ninong" | "Ninang" | null;
-  }
+  fields: { displayName: string; altNames: string[]; godparentRole: "Ninong" | "Ninang" | null }
 ): Promise<void> {
   const sb = supabaseAdmin();
-  const group_id = await resolveGroupId(fields.groupName);
   const { error } = await sb
     .from("guests")
     .update({
       display_name: fields.displayName.trim(),
       alt_names: fields.altNames.map((n) => n.trim()).filter(Boolean),
-      max_pax: Math.max(1, fields.maxPax),
-      table_number: fields.tableNumber?.trim() || null,
-      group_id,
       godparent_role: fields.godparentRole,
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
 }
 
-export async function deleteGuest(id: string): Promise<void> {
+export async function deleteMember(id: string): Promise<void> {
   const sb = supabaseAdmin();
   const { error } = await sb.from("guests").delete().eq("id", id);
   if (error) throw new Error(error.message);

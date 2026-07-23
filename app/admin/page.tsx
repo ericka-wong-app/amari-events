@@ -22,12 +22,12 @@ export default async function AdminDashboard() {
   return (
     <AdminShell title="Dashboard" active="/admin">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label="Invited" value={s.invited} />
+        <Tile label="Invites" value={s.groups} />
         <Tile label="Attending" value={s.attending} accent />
         <Tile label="Declined" value={s.declined} />
         <Tile label="Pending" value={s.pending} />
         <Tile label="Confirmed pax" value={s.confirmedPax} accent />
-        <Tile label="Checked in" value={s.checkedIn} />
+        <Tile label="People listed" value={s.people} />
         <Tile label="Gifts raised" value={`₱${s.paidTotalPhp.toLocaleString()}`} accent />
       </div>
 

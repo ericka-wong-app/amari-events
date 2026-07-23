@@ -3,7 +3,7 @@ import LogoutButton from "./LogoutButton";
 
 const NAV = [
   { href: "/admin", label: "Dashboard" },
-  { href: "/admin/guests", label: "Guests" },
+  { href: "/admin/guests", label: "Invites" },
   { href: "/admin/checkin", label: "Check-in" },
   { href: "/admin/gifts", label: "Gifts" },
 ];
