@@ -9,6 +9,8 @@ export type Member = {
   altNames: string[];
   godparentRole: "Ninong" | "Ninang" | null;
   isOnline: boolean;
+  rsvpStatus: "attending" | "declined" | "pending";
+  attendance: Attendance;
   checkedIn: boolean;
 };
 
@@ -19,9 +21,6 @@ export type Group = {
   name: string;
   maxPax: number;
   tableNumber: string | null;
-  rsvpStatus: "attending" | "declined" | "pending";
-  confirmedPax: number | null;
-  attendance: Attendance;
   members: Member[];
 };
 
@@ -50,6 +49,8 @@ type MemberRow = {
   alt_names: string[] | null;
   godparent_role: "Ninong" | "Ninang" | null;
   is_online: boolean | null;
+  rsvp_status: string | null;
+  attendance: string | null;
   checkins: { checked_in_at: string } | { checked_in_at: string }[] | null;
 };
 type GroupRow = {
@@ -57,14 +58,11 @@ type GroupRow = {
   name: string;
   max_pax: number;
   table_number: string | null;
-  rsvp_status: string;
-  confirmed_pax: number | null;
-  attendance: string | null;
   guests: MemberRow[] | null;
 };
 
 const SELECT =
-  "id, name, max_pax, table_number, rsvp_status, confirmed_pax, attendance, guests(id, display_name, alt_names, godparent_role, is_online, checkins(checked_in_at))";
+  "id, name, max_pax, table_number, guests(id, display_name, alt_names, godparent_role, is_online, rsvp_status, attendance, checkins(checked_in_at))";
 
 function toGroup(r: GroupRow): Group {
   return {
@@ -72,9 +70,6 @@ function toGroup(r: GroupRow): Group {
     name: r.name,
     maxPax: r.max_pax,
     tableNumber: r.table_number,
-    rsvpStatus: (r.rsvp_status as Group["rsvpStatus"]) ?? "pending",
-    confirmedPax: r.confirmed_pax,
-    attendance: (r.attendance as Group["attendance"]) ?? null,
     members: (r.guests ?? [])
       .map((m) => ({
         id: m.id,
@@ -82,6 +77,8 @@ function toGroup(r: GroupRow): Group {
         altNames: m.alt_names ?? [],
         godparentRole: m.godparent_role,
         isOnline: Boolean(m.is_online),
+        rsvpStatus: (m.rsvp_status as Member["rsvpStatus"]) ?? "pending",
+        attendance: (m.attendance as Attendance) ?? null,
         checkedIn: Boolean(one(m.checkins)),
       }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName)),
@@ -101,25 +98,17 @@ export async function getStats(): Promise<AdminStats> {
   const { data: paid } = await sb.from("contributions").select("amount_php").eq("status", "paid");
   const paidTotalPhp = (paid ?? []).reduce((s, r) => s + (r.amount_php ?? 0), 0);
 
-  const attending = groups.filter((g) => g.rsvpStatus === "attending");
-  const confirmedPax = attending.reduce((s, g) => s + (g.confirmedPax ?? 0), 0);
-  // Online = online members within attending groups (capped at that group's headcount).
-  const onlinePax = attending.reduce(
-    (s, g) => s + Math.min(g.confirmedPax ?? 0, g.members.filter((m) => m.isOnline).length),
-    0
-  );
-  const inPersonPax = Math.max(0, confirmedPax - onlinePax);
-
   const allMembers = groups.flatMap((g) => g.members);
+  const attending = allMembers.filter((m) => m.rsvpStatus === "attending");
 
   return {
     groups: groups.length,
     attending: attending.length,
-    declined: groups.filter((g) => g.rsvpStatus === "declined").length,
-    pending: groups.filter((g) => g.rsvpStatus === "pending").length,
-    confirmedPax,
-    inPersonPax,
-    onlinePax,
+    declined: allMembers.filter((m) => m.rsvpStatus === "declined").length,
+    pending: allMembers.filter((m) => m.rsvpStatus === "pending").length,
+    confirmedPax: attending.length,
+    inPersonPax: attending.filter((m) => !m.isOnline).length,
+    onlinePax: attending.filter((m) => m.isOnline).length,
     people: allMembers.length,
     inPersonListed: allMembers.filter((m) => !m.isOnline).length,
     onlineListed: allMembers.filter((m) => m.isOnline).length,
@@ -232,21 +221,20 @@ export async function setMemberOnline(memberId: string, isOnline: boolean): Prom
   if (error) throw new Error(error.message);
 }
 
-// Host manually sets an invite's RSVP (e.g. a guest told them in person).
-export async function setGroupRsvpAdmin(
-  groupId: string,
+// Host manually sets a PERSON's RSVP (e.g. they told the host in person).
+export async function setMemberRsvpAdmin(
+  memberId: string,
   status: "attending" | "declined" | "pending",
-  confirmedPax: number,
   attendance: "both" | "reception" | null
 ): Promise<void> {
   const sb = supabaseAdmin();
   const row =
     status === "attending"
-      ? { rsvp_status: "attending", confirmed_pax: Math.max(1, confirmedPax), attendance: attendance ?? "both", responded_at: new Date().toISOString() }
+      ? { rsvp_status: "attending", attendance: attendance ?? "both", rsvp_at: new Date().toISOString() }
       : status === "declined"
-        ? { rsvp_status: "declined", confirmed_pax: 0, attendance: null, responded_at: new Date().toISOString() }
-        : { rsvp_status: "pending", confirmed_pax: null, attendance: null, responded_at: null };
-  const { error } = await sb.from("groups").update(row).eq("id", groupId);
+        ? { rsvp_status: "declined", attendance: null, rsvp_at: new Date().toISOString() }
+        : { rsvp_status: "pending", attendance: null, rsvp_at: null };
+  const { error } = await sb.from("guests").update(row).eq("id", memberId);
   if (error) throw new Error(error.message);
 }
 

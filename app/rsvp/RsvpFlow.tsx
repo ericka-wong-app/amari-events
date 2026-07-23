@@ -15,13 +15,7 @@ const QUESTIONS = [
   "What is your favorite color?",
 ];
 
-type Selected = {
-  id: string;
-  displayName: string;
-  groupName: string | null;
-  hasPin: boolean;
-  securityQuestion: string | null;
-};
+type Selected = { id: string; displayName: string; groupName: string | null; hasPin: boolean; securityQuestion: string | null };
 
 const field = "mt-1 w-full rounded-2xl border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const labelCls = "mt-3 block text-left text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-soft";
@@ -43,18 +37,15 @@ export default function RsvpFlow({ initialPass }: { initialPass: Pass | null }) 
 
   function run(fn: () => Promise<void>) {
     setError(null);
-    start(async () => {
-      try { await fn(); } catch { setError("Oops, something went wrong. Please try again."); }
-    });
+    start(async () => { try { await fn(); } catch { setError("Oops, something went wrong. Please try again."); } });
   }
 
   function onAuthed(r: Awaited<ReturnType<typeof api.login>>) {
     if (!r.ok) return setError(r.error);
     setSel(null); setPin(""); setAnswer(""); setForgot(false);
     setPass(r.pass);
-    setEditing(r.pass.pass.group.rsvpStatus === "pending");
+    setEditing(r.pass.pass.rsvpStatus === "pending");
   }
-
   function fullReset() {
     setPass(null); setEditing(false); setSel(null); setHits(null); setQuery(""); setPin(""); setForgot(false); setError(null);
   }
@@ -65,10 +56,10 @@ export default function RsvpFlow({ initialPass }: { initialPass: Pass | null }) 
 
       {pass && editing ? (
         <RsvpForm pass={pass} pending={pending} error={error}
-          onCancel={pass.pass.group.rsvpStatus === "pending" ? undefined : () => setEditing(false)}
-          onSubmit={(status, pax, attendance) => run(async () => {
-            const r = await api.submitRsvp(status, pax, attendance);
-            if (r.ok) { setPass(r.pass); setEditing(false); if (r.pass.pass.group.rsvpStatus === "attending") setBurst((b) => b + 1); }
+          onCancel={pass.pass.rsvpStatus === "pending" ? undefined : () => setEditing(false)}
+          onSubmit={(status, attendance) => run(async () => {
+            const r = await api.submitRsvp(status, attendance);
+            if (r.ok) { setPass(r.pass); setEditing(false); if (r.pass.pass.rsvpStatus === "attending") setBurst((b) => b + 1); }
             else setError(r.error);
           })}
         />
@@ -124,7 +115,6 @@ export default function RsvpFlow({ initialPass }: { initialPass: Pass | null }) 
               <p className="text-sm text-ink-soft">No match found — check the spelling or ask the host.</p>
             )}
           </div>
-          <p className="mt-6 text-center text-xs text-ink-soft"><Link href="/" className="underline">← Back to the invitation</Link></p>
         </Card>
       )}
     </>
@@ -160,30 +150,24 @@ function Form({ label, help, pin, setPin, pinLabel = "4-digit PIN", extra, foote
 
 function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
   pass: Pass; pending: boolean; error: string | null;
-  onSubmit: (status: "attending" | "declined", pax: number, attendance: "both" | "reception") => void; onCancel?: () => void;
+  onSubmit: (status: "attending" | "declined", attendance: "both" | "reception") => void; onCancel?: () => void;
 }) {
-  const g = pass.pass.group;
-  const online = pass.pass.memberIsOnline;
-  const others = g.members.filter((m) => m !== pass.pass.memberName);
-  const [pax, setPax] = useState(g.confirmedPax && g.confirmedPax > 0 ? g.confirmedPax : g.maxPax);
-  const [attendance, setAttendance] = useState<"both" | "reception">(g.attendance === "reception" ? "reception" : "both");
+  const p = pass.pass;
+  const others = p.group.members.filter((m) => m !== p.memberName);
+  const [attendance, setAttendance] = useState<"both" | "reception">(p.attendance === "reception" ? "reception" : "both");
 
   return (
     <Card>
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/75">RSVP</p>
-      <h2 className="mt-1 font-script text-4xl text-rose-deep">{pass.pass.memberName}</h2>
-      <p className="mt-1 text-xs text-ink-soft">
-        {g.name} invite{others.length > 0 ? ` · with ${others.join(", ")}` : ""}
-      </p>
+      <h2 className="mt-1 font-script text-4xl text-rose-deep">{p.memberName}</h2>
+      {p.group.name && <p className="mt-1 text-xs text-ink-soft">{p.group.name} invite{others.length > 0 ? ` · with ${others.join(", ")}` : ""}</p>}
       <p className="mt-3 rounded-2xl bg-blush/40 px-4 py-2 text-sm text-ink">
-        {online
-          ? "Your invite is joining online from abroad 🌏"
-          : <>Your group has <strong className="text-rose-deep">{g.maxPax}</strong> {g.maxPax === 1 ? "seat" : "seats"} in total.</>}
+        {p.isOnline ? "You're joining online from abroad 🌏" : "This is your own RSVP — everyone in your group answers for themselves."}
       </p>
 
-      {!online && (
+      {!p.isOnline && (
         <>
-          <label className={labelCls}>Which will your group attend?</label>
+          <label className={labelCls}>Which will you attend?</label>
           <div className="mt-1 grid grid-cols-2 gap-2">
             {([["both", "Ceremony + Reception"], ["reception", "Reception only"]] as const).map(([v, t]) => (
               <button key={v} type="button" onClick={() => setAttendance(v)}
@@ -193,17 +177,12 @@ function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
         </>
       )}
 
-      <label className={labelCls}>{online ? "How many are joining online?" : "How many of your group are coming?"}</label>
-      <select value={pax} onChange={(e) => setPax(Number(e.target.value))} className={field}>
-        {Array.from({ length: g.maxPax }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
-      </select>
-
       <div className="mt-6 flex flex-col gap-3">
-        <button onClick={() => onSubmit("attending", pax, attendance)} disabled={pending} className="hover-lift w-full rounded-full bg-rose px-6 py-3.5 font-semibold text-white shadow-[0_16px_32px_-16px_rgba(183,110,125,0.95)] disabled:opacity-60">
-          {pending ? "Saving…" : "We'll be there"}
+        <button onClick={() => onSubmit("attending", attendance)} disabled={pending} className="hover-lift w-full rounded-full bg-rose px-6 py-3.5 font-semibold text-white shadow-[0_16px_32px_-16px_rgba(183,110,125,0.95)] disabled:opacity-60">
+          {pending ? "Saving…" : p.isOnline ? "I'll join online" : "I'll be there"}
         </button>
-        <button onClick={() => onSubmit("declined", 0, attendance)} disabled={pending} className="w-full rounded-full border border-rose bg-white px-6 py-3 font-semibold text-rose-deep disabled:opacity-60">
-          Sorry, we can&apos;t make it
+        <button onClick={() => onSubmit("declined", attendance)} disabled={pending} className="w-full rounded-full border border-rose bg-white px-6 py-3 font-semibold text-rose-deep disabled:opacity-60">
+          Sorry, I can&apos;t make it
         </button>
         {onCancel && <button onClick={onCancel} className="text-xs text-ink-soft underline">Cancel</button>}
       </div>
@@ -213,42 +192,40 @@ function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
 }
 
 function PassCard({ pass, onEdit, onLogout }: { pass: Pass; onEdit: () => void; onLogout: () => void }) {
-  const g = pass.pass.group;
-  const online = pass.pass.memberIsOnline;
-  const others = g.members.filter((m) => m !== pass.pass.memberName);
-  const attending = g.rsvpStatus === "attending";
-  const declined = g.rsvpStatus === "declined";
-  const attLabel = g.attendance === "both" ? "Ceremony + Reception" : g.attendance === "reception" ? "Reception only" : g.attendance === "ceremony" ? "Ceremony only" : null;
+  const p = pass.pass;
+  const others = p.group.members.filter((m) => m !== p.memberName);
+  const attending = p.rsvpStatus === "attending";
+  const declined = p.rsvpStatus === "declined";
+  const attLabel = p.attendance === "both" ? "Ceremony + Reception" : p.attendance === "reception" ? "Reception only" : p.attendance === "ceremony" ? "Ceremony only" : null;
   return (
     <Card>
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/75">Your Pass</p>
-      <h2 className="mt-1 font-script text-5xl text-rose-deep">{pass.pass.memberName}</h2>
-      <p className="text-xs text-ink-soft">{g.name} invite{others.length > 0 ? ` · with ${others.join(", ")}` : ""}</p>
+      <h2 className="mt-1 font-script text-5xl text-rose-deep">{p.memberName}</h2>
+      {p.group.name && <p className="text-xs text-ink-soft">{p.group.name} invite{others.length > 0 ? ` · with ${others.join(", ")}` : ""}</p>}
       <FloralDivider className="mt-3" />
 
       <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
-        <Badge>{attending ? `Attending · ${g.confirmedPax} ${online ? "joining" : "coming"}` : declined ? "Not attending" : "RSVP pending"}</Badge>
-        {online ? <Badge>Joining online</Badge> : (<>{attending && attLabel && <Badge>{attLabel}</Badge>}{g.tableNumber && <Badge>Table {g.tableNumber}</Badge>}</>)}
+        <Badge>{attending ? "Attending" : declined ? "Not attending" : "RSVP pending"}</Badge>
+        {p.isOnline ? <Badge>Joining online</Badge> : (<>{attending && attLabel && <Badge>{attLabel}</Badge>}{p.group.tableNumber && <Badge>Table {p.group.tableNumber}</Badge>}</>)}
       </div>
 
-      {attending && online && (
+      {attending && p.isOnline && (
         <p className="mt-5 rounded-2xl bg-blush/40 px-4 py-3 text-sm text-ink">
           You&apos;re joining online from abroad 🌏 — no check-in needed. We&apos;ll share the livestream details with you.
         </p>
       )}
-
-      {attending && !online && (
+      {attending && !p.isOnline && (
         <>
           <div className="mx-auto mt-5 inline-block rounded-3xl border border-dashed border-blush-2 bg-white p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={pass.qrDataUrl} alt="Your group check-in QR code" className="h-52 w-52" />
+            <img src={pass.qrDataUrl} alt="Your check-in QR code" className="h-52 w-52" />
           </div>
-          <p className="mt-2 text-xs text-ink-soft">One pass for your group — show this QR at the entrance.</p>
+          <p className="mt-2 text-xs text-ink-soft">Your personal pass — show this QR at the entrance.</p>
         </>
       )}
 
       <div className="mt-6 flex flex-col gap-2">
-        <button onClick={onEdit} className="text-sm text-rose-deep underline">Change our response</button>
+        <button onClick={onEdit} className="text-sm text-rose-deep underline">Change my response</button>
         <button onClick={onLogout} className="text-xs text-ink-soft underline">Not you? Log out</button>
         <Link href="/" className="text-xs text-rose-deep underline">← Back to the invitation</Link>
       </div>

@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Group, Member } from "@/lib/admin-data";
-import { makeInvite, editGroup, delGroup, newMember, editMember, delMember, toggleOnline, setInviteRsvp } from "../actions";
+import { makeInvite, editGroup, delGroup, newMember, editMember, delMember, toggleOnline, setPersonRsvp } from "../actions";
 
 const inp = "w-full rounded-md border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const lbl = "block text-[0.62rem] font-semibold uppercase tracking-wide text-ink-soft";
@@ -76,16 +76,16 @@ export default function GroupManager({ groups }: { groups: Group[] }) {
           </thead>
           <tbody>
             {rows.map((g) => {
-              const att = g.attendance === "both" ? "Ceremony + Reception" : g.attendance === "reception" ? "Reception only" : g.attendance === "ceremony" ? "Ceremony only" : "";
-              const rsvp = g.rsvpStatus === "attending" ? `Attending (${g.confirmedPax ?? 0})` : g.rsvpStatus === "declined" ? "Declined" : "Pending";
+              const attendingCount = g.members.filter((m) => m.rsvpStatus === "attending").length;
+              const declinedCount = g.members.filter((m) => m.rsvpStatus === "declined").length;
               return (
                 <tr key={g.id} className="border-t border-blush-2/70 hover:bg-blush/20">
                   <td className="px-4 py-2.5 font-semibold text-ink">{g.name}{g.members.some((m) => m.isOnline) && <span className="ml-2 rounded-full bg-sky/50 px-2 py-0.5 text-[0.6rem] font-semibold text-ink-soft">Online</span>}</td>
                   <td className="px-3 py-2.5 tabular-nums text-ink-soft">{g.maxPax}</td>
                   <td className="px-3 py-2.5 text-ink-soft">{g.tableNumber || "—"}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${g.rsvpStatus === "attending" ? "bg-sage/40 text-sage-deep" : g.rsvpStatus === "declined" ? "bg-blush-2 text-rose-deep" : "bg-white text-ink-soft"}`}>{rsvp}</span>
-                    {att && <span className="ml-1 block text-[0.65rem] text-ink-soft">{att}</span>}
+                    <span className="rounded-full bg-sage/40 px-2 py-0.5 text-xs font-semibold text-sage-deep">{attendingCount}/{g.members.length} in</span>
+                    {declinedCount > 0 && <span className="ml-1 text-[0.65rem] text-ink-soft">{declinedCount} declined</span>}
                   </td>
                   <td className="max-w-[220px] truncate px-4 py-2.5 text-ink-soft">{g.members.map((m) => m.displayName).join(", ") || "—"}</td>
                   <td className="px-3 py-2.5 text-right"><button onClick={() => setSelected(g.id)} className="text-xs font-semibold text-rose-deep">Manage</button></td>
@@ -147,14 +147,6 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
   const [table, setTable] = useState(group.tableNumber ?? "");
   const [memberName, setMemberName] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
-  const [showAttending, setShowAttending] = useState(false);
-  const [rsvpPax, setRsvpPax] = useState(group.confirmedPax && group.confirmedPax > 0 ? group.confirmedPax : group.maxPax);
-  const [rsvpAtt, setRsvpAtt] = useState<"both" | "reception">(group.attendance === "reception" ? "reception" : "both");
-
-  const rsvpLabel =
-    group.rsvpStatus === "attending"
-      ? `Attending — ${group.confirmedPax ?? 0} coming${group.attendance === "reception" ? " (reception only)" : group.attendance === "both" ? " (ceremony + reception)" : ""}`
-      : group.rsvpStatus === "declined" ? "Declined" : "Pending";
 
   return (
     <div>
@@ -174,35 +166,7 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
       </div>
 
       <div className="mt-4 rounded-lg border border-blush-2 bg-white px-4 py-4">
-        <p className={lbl}>RSVP (set manually)</p>
-        <p className="mt-1 text-sm text-ink">Current: <strong className="text-rose-deep">{rsvpLabel}</strong></p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button onClick={() => setShowAttending((v) => !v)} className={btnGhost}>Mark attending…</button>
-          <button disabled={pending} onClick={() => run(() => setInviteRsvp(group.id, "declined", 0, null))} className={btnGhost}>Mark declined</button>
-          <button disabled={pending} onClick={() => run(() => setInviteRsvp(group.id, "pending", 0, null))} className={btnGhost}>Reset to pending</button>
-        </div>
-        {showAttending && (
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <div><span className={lbl}>Coming (pax)</span>
-              <select value={rsvpPax} onChange={(e) => setRsvpPax(Number(e.target.value))} className={inp}>
-                {Array.from({ length: group.maxPax }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-            <div><span className={lbl}>Attendance</span>
-              <select value={rsvpAtt} onChange={(e) => setRsvpAtt(e.target.value as "both" | "reception")} className={inp}>
-                <option value="both">Ceremony + Reception</option>
-                <option value="reception">Reception only</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button disabled={pending} onClick={() => run(async () => { const r = await setInviteRsvp(group.id, "attending", rsvpPax, rsvpAtt); if (r.ok) setShowAttending(false); return r; })} className={btn}>Confirm attending</button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 rounded-lg border border-blush-2 bg-white px-4 py-4">
-        <p className={lbl}>People ({group.members.length})</p>
+        <p className={lbl}>People ({group.members.length}) — RSVP is per person</p>
         <div className="mt-2 space-y-1.5">
           {group.members.map((m) => editId === m.id ? (
             <MemberEditor key={m.id} member={m} pending={pending}
@@ -211,18 +175,42 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
               onDelete={() => run(async () => { const r = await delMember(m.id); if (r.ok) setEditId(null); return r; })}
             />
           ) : (
-            <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-blush-2/70 px-3 py-2 text-sm">
-              <span className="min-w-0 truncate text-ink">{m.displayName}
-                {m.godparentRole && <span className="ml-2 rounded-full bg-blush px-2 py-0.5 text-[0.6rem] font-semibold text-rose-deep">{m.godparentRole}</span>}
-              </span>
-              <div className="flex flex-none items-center gap-2">
-                <span className="text-[0.62rem] uppercase tracking-wide text-ink-soft">Online</span>
-                <button type="button" role="switch" aria-checked={m.isOnline} disabled={pending}
-                  onClick={() => run(() => toggleOnline(m.id, !m.isOnline))} title="Online (from abroad)"
-                  className={`relative inline-flex h-5 w-9 flex-none items-center rounded-full transition ${m.isOnline ? "bg-sky" : "bg-blush-2"}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${m.isOnline ? "translate-x-4" : "translate-x-0.5"}`} />
-                </button>
-                <button onClick={() => setEditId(m.id)} className="text-xs font-semibold text-rose-deep">Edit</button>
+            <div key={m.id} className="rounded-md border border-blush-2/70 px-3 py-2 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-ink">{m.displayName}
+                  {m.godparentRole && <span className="ml-2 rounded-full bg-blush px-2 py-0.5 text-[0.6rem] font-semibold text-rose-deep">{m.godparentRole}</span>}
+                </span>
+                <div className="flex flex-none items-center gap-2">
+                  <span className="text-[0.62rem] uppercase tracking-wide text-ink-soft">Online</span>
+                  <button type="button" role="switch" aria-checked={m.isOnline} disabled={pending}
+                    onClick={() => run(() => toggleOnline(m.id, !m.isOnline))} title="Online (from abroad)"
+                    className={`relative inline-flex h-5 w-9 flex-none items-center rounded-full transition ${m.isOnline ? "bg-sky" : "bg-blush-2"}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${m.isOnline ? "translate-x-4" : "translate-x-0.5"}`} />
+                  </button>
+                  <button onClick={() => setEditId(m.id)} className="text-xs font-semibold text-rose-deep">Edit</button>
+                </div>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span className="text-[0.58rem] uppercase tracking-wide text-ink-soft">RSVP</span>
+                {(["attending", "declined", "pending"] as const).map((st) => (
+                  <button key={st} disabled={pending}
+                    onClick={() => run(() => setPersonRsvp(m.id, st, st === "attending" ? (m.attendance === "reception" ? "reception" : "both") : null))}
+                    className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${
+                      m.rsvpStatus === st
+                        ? st === "attending" ? "bg-sage-deep text-white" : st === "declined" ? "bg-rose text-white" : "bg-ink-soft text-white"
+                        : "border border-blush-2 text-ink-soft"
+                    }`}>
+                    {st === "attending" ? "Attending" : st === "declined" ? "Declined" : "Pending"}
+                  </button>
+                ))}
+                {m.rsvpStatus === "attending" && (
+                  <select value={m.attendance ?? "both"} disabled={pending}
+                    onChange={(e) => run(() => setPersonRsvp(m.id, "attending", e.target.value as "both" | "reception"))}
+                    className="rounded border border-blush-2 bg-white px-1 py-0.5 text-[0.65rem]">
+                    <option value="both">Both</option>
+                    <option value="reception">Reception only</option>
+                  </select>
+                )}
               </div>
             </div>
           ))}

@@ -12,7 +12,7 @@ import {
   createInvite,
   setGodparentRole,
   setMemberOnline,
-  setGroupRsvpAdmin,
+  setMemberRsvpAdmin,
 } from "@/lib/admin-data";
 
 export async function adminLogin(username: string, password: string): Promise<{ ok: boolean; error?: string }> {
@@ -73,6 +73,6 @@ export async function setRole(memberId: string, role: "Ninong" | "Ninang" | null
 export async function toggleOnline(memberId: string, isOnline: boolean): Promise<Res> {
   return wrap(() => setMemberOnline(memberId, isOnline));
 }
-export async function setInviteRsvp(groupId: string, status: "attending" | "declined" | "pending", pax: number, attendance: "both" | "reception" | null): Promise<Res> {
-  return wrap(() => setGroupRsvpAdmin(groupId, status, pax, attendance));
+export async function setPersonRsvp(memberId: string, status: "attending" | "declined" | "pending", attendance: "both" | "reception" | null): Promise<Res> {
+  return wrap(() => setMemberRsvpAdmin(memberId, status, attendance));
 }

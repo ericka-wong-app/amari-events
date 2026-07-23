@@ -6,24 +6,23 @@ import {
   setPinAndSecurity,
   verifyPin,
   resetPinWithAnswer,
-  getGroupPass,
-  getGroupIdForMember,
-  setGroupRsvp,
+  getMemberPass,
+  setMemberRsvp,
   type SearchHit,
-  type GroupPass,
+  type MemberPass,
 } from "@/lib/guests";
 import { createGuestSession, getGuestSession, clearGuestSession } from "@/lib/session";
 import { passQrDataUrl } from "@/lib/qr";
 
-export type Pass = { pass: GroupPass; qrDataUrl: string };
+export type Pass = { pass: MemberPass; qrDataUrl: string };
 type Result = { ok: true; pass: Pass } | { ok: false; error: string };
 
 const PIN_RE = /^\d{4}$/;
 
 async function buildPass(memberId: string): Promise<Pass | null> {
-  const gp = await getGroupPass(memberId);
-  if (!gp) return null;
-  return { pass: gp, qrDataUrl: await passQrDataUrl(gp.group.id) };
+  const mp = await getMemberPass(memberId);
+  if (!mp) return null;
+  return { pass: mp, qrDataUrl: await passQrDataUrl(memberId) };
 }
 
 export async function search(query: string): Promise<SearchHit[]> {
@@ -36,10 +35,10 @@ export async function getGuest(id: string): Promise<{
   hasPin: boolean;
   securityQuestion: string | null;
 } | null> {
-  const gp = await getGroupPass(id);
-  if (!gp) return null;
+  const mp = await getMemberPass(id);
+  if (!mp) return null;
   const auth = await getAuthStatus(id);
-  return { displayName: gp.memberName, groupName: gp.group.name, hasPin: auth.hasPin, securityQuestion: auth.securityQuestion };
+  return { displayName: mp.memberName, groupName: mp.group.name, hasPin: auth.hasPin, securityQuestion: auth.securityQuestion };
 }
 
 export async function setPin(id: string, pin: string, question: string, answer: string): Promise<Result> {
@@ -50,7 +49,7 @@ export async function setPin(id: string, pin: string, question: string, answer: 
   await setPinAndSecurity(id, pin, question.trim(), answer);
   await createGuestSession(id);
   const pass = await buildPass(id);
-  return pass ? { ok: true, pass } : { ok: false, error: "Invite not found." };
+  return pass ? { ok: true, pass } : { ok: false, error: "Guest not found." };
 }
 
 export async function login(id: string, pin: string): Promise<Result> {
@@ -58,7 +57,7 @@ export async function login(id: string, pin: string): Promise<Result> {
   if (!(await verifyPin(id, pin))) return { ok: false, error: "Incorrect PIN." };
   await createGuestSession(id);
   const pass = await buildPass(id);
-  return pass ? { ok: true, pass } : { ok: false, error: "Invite not found." };
+  return pass ? { ok: true, pass } : { ok: false, error: "Guest not found." };
 }
 
 export async function resetPin(id: string, answer: string, newPin: string): Promise<Result> {
@@ -66,24 +65,18 @@ export async function resetPin(id: string, answer: string, newPin: string): Prom
   if (!(await resetPinWithAnswer(id, answer, newPin))) return { ok: false, error: "That answer doesn't match." };
   await createGuestSession(id);
   const pass = await buildPass(id);
-  return pass ? { ok: true, pass } : { ok: false, error: "Invite not found." };
+  return pass ? { ok: true, pass } : { ok: false, error: "Guest not found." };
 }
 
 export async function submitRsvp(
   status: "attending" | "declined",
-  confirmedPax: number,
   attendance: "both" | "reception"
 ): Promise<Result> {
   const memberId = await getGuestSession();
   if (!memberId) return { ok: false, error: "Your session expired. Please log in again." };
-  const groupId = await getGroupIdForMember(memberId);
-  if (!groupId) return { ok: false, error: "Invite not found." };
-  const gp = await getGroupPass(memberId);
-  const maxPax = gp?.group.maxPax ?? 1;
-  const pax = status === "attending" ? Math.min(Math.max(1, confirmedPax), maxPax) : 0;
-  await setGroupRsvp(groupId, status, pax, attendance);
+  await setMemberRsvp(memberId, status, attendance);
   const pass = await buildPass(memberId);
-  return pass ? { ok: true, pass } : { ok: false, error: "Invite not found." };
+  return pass ? { ok: true, pass } : { ok: false, error: "Guest not found." };
 }
 
 export async function myPass(): Promise<Pass | null> {

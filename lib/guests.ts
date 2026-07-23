@@ -5,20 +5,14 @@ export type SearchHit = { id: string; displayName: string; groupName: string | n
 export type AuthStatus = { hasPin: boolean; securityQuestion: string | null };
 export type Attendance = "both" | "reception" | "ceremony" | null;
 
-export type GroupPass = {
+// Each PERSON has their own RSVP + QR. The group is context (who you're with).
+export type MemberPass = {
   memberId: string;
   memberName: string;
-  memberIsOnline: boolean;
-  group: {
-    id: string;
-    name: string;
-    maxPax: number;
-    tableNumber: string | null;
-    attendance: Attendance;
-    rsvpStatus: "attending" | "declined" | "pending";
-    confirmedPax: number | null;
-    members: string[];
-  };
+  isOnline: boolean;
+  rsvpStatus: "attending" | "declined" | "pending";
+  attendance: Attendance;
+  group: { name: string | null; tableNumber: string | null; members: string[] };
 };
 
 function one<T>(v: T | T[] | null | undefined): T | null {
@@ -34,7 +28,6 @@ type MemberRow = {
   groups: { name: string } | { name: string }[] | null;
 };
 
-// Members are searchable by their own name or nicknames.
 export async function searchGuests(query: string): Promise<SearchHit[]> {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
@@ -54,13 +47,12 @@ export async function searchGuests(query: string): Promise<SearchHit[]> {
   return hits.slice(0, 12);
 }
 
-// --- Per-member auth (each person logs in individually) ---
+// --- Per-person auth ---
 export async function getAuthStatus(memberId: string): Promise<AuthStatus> {
   const sb = supabaseAdmin();
   const { data } = await sb.from("guest_auth").select("pin_hash, security_question").eq("guest_id", memberId).maybeSingle();
   return { hasPin: Boolean(data?.pin_hash), securityQuestion: data?.security_question ?? null };
 }
-
 export async function setPinAndSecurity(memberId: string, pin: string, question: string, answer: string): Promise<void> {
   const sb = supabaseAdmin();
   const { error } = await sb.from("guest_auth").upsert({
@@ -72,13 +64,11 @@ export async function setPinAndSecurity(memberId: string, pin: string, question:
   });
   if (error) throw new Error(error.message);
 }
-
 export async function verifyPin(memberId: string, pin: string): Promise<boolean> {
   const sb = supabaseAdmin();
   const { data } = await sb.from("guest_auth").select("pin_hash").eq("guest_id", memberId).maybeSingle();
   return verifySecret(pin, data?.pin_hash);
 }
-
 export async function resetPinWithAnswer(memberId: string, answer: string, newPin: string): Promise<boolean> {
   const sb = supabaseAdmin();
   const { data } = await sb.from("guest_auth").select("security_answer_hash").eq("guest_id", memberId).maybeSingle();
@@ -88,56 +78,44 @@ export async function resetPinWithAnswer(memberId: string, answer: string, newPi
   return true;
 }
 
-// --- Group pass (pax, table, RSVP all live on the group) ---
-export async function getGroupPass(memberId: string): Promise<GroupPass | null> {
+// --- Per-person pass ---
+export async function getMemberPass(memberId: string): Promise<MemberPass | null> {
   const sb = supabaseAdmin();
-  const { data: m } = await sb.from("guests").select("id, display_name, group_id, is_online").eq("id", memberId).maybeSingle();
-  if (!m || !m.group_id) return null;
-  const { data: g } = await sb
-    .from("groups")
-    .select("id, name, max_pax, table_number, attendance, rsvp_status, confirmed_pax")
-    .eq("id", m.group_id)
+  const { data: m } = await sb
+    .from("guests")
+    .select("id, display_name, group_id, is_online, rsvp_status, attendance, groups(name, table_number)")
+    .eq("id", memberId)
     .maybeSingle();
-  if (!g) return null;
-  const { data: mem } = await sb.from("guests").select("display_name").eq("group_id", g.id).order("display_name");
+  if (!m) return null;
+  const g = one(m.groups as { name: string; table_number: string | null } | { name: string; table_number: string | null }[] | null);
+  let members: string[] = [];
+  if (m.group_id) {
+    const { data: mem } = await sb.from("guests").select("display_name").eq("group_id", m.group_id).order("display_name");
+    members = (mem ?? []).map((x) => x.display_name);
+  }
   return {
     memberId: m.id,
     memberName: m.display_name,
-    memberIsOnline: Boolean(m.is_online),
-    group: {
-      id: g.id,
-      name: g.name,
-      maxPax: g.max_pax,
-      tableNumber: g.table_number ?? null,
-      attendance: (g.attendance as Attendance) ?? null,
-      rsvpStatus: (g.rsvp_status as GroupPass["group"]["rsvpStatus"]) ?? "pending",
-      confirmedPax: g.confirmed_pax ?? null,
-      members: (mem ?? []).map((x) => x.display_name),
-    },
+    isOnline: Boolean(m.is_online),
+    rsvpStatus: (m.rsvp_status as MemberPass["rsvpStatus"]) ?? "pending",
+    attendance: (m.attendance as Attendance) ?? null,
+    group: { name: g?.name ?? null, tableNumber: g?.table_number ?? null, members },
   };
 }
 
-export async function getGroupIdForMember(memberId: string): Promise<string | null> {
-  const sb = supabaseAdmin();
-  const { data } = await sb.from("guests").select("group_id").eq("id", memberId).maybeSingle();
-  return data?.group_id ?? null;
-}
-
-export async function setGroupRsvp(
-  groupId: string,
+export async function setMemberRsvp(
+  memberId: string,
   status: "attending" | "declined",
-  confirmedPax: number,
   attendance: Exclude<Attendance, null>
 ): Promise<void> {
   const sb = supabaseAdmin();
   const { error } = await sb
-    .from("groups")
+    .from("guests")
     .update({
       rsvp_status: status,
-      confirmed_pax: status === "attending" ? confirmedPax : 0,
       attendance: status === "attending" ? attendance : null,
-      responded_at: new Date().toISOString(),
+      rsvp_at: new Date().toISOString(),
     })
-    .eq("id", groupId);
+    .eq("id", memberId);
   if (error) throw new Error(error.message);
 }
