@@ -99,19 +99,22 @@ export async function getStats(): Promise<AdminStats> {
   const paidTotalPhp = (paid ?? []).reduce((s, r) => s + (r.amount_php ?? 0), 0);
 
   const allMembers = groups.flatMap((g) => g.members);
-  const attending = allMembers.filter((m) => m.rsvpStatus === "attending");
+  // Online guests are abroad — automatically counted out of the physical RSVP.
+  const inPerson = allMembers.filter((m) => !m.isOnline);
+  const online = allMembers.filter((m) => m.isOnline);
+  const attending = inPerson.filter((m) => m.rsvpStatus === "attending");
 
   return {
     groups: groups.length,
     attending: attending.length,
-    declined: allMembers.filter((m) => m.rsvpStatus === "declined").length,
-    pending: allMembers.filter((m) => m.rsvpStatus === "pending").length,
+    declined: inPerson.filter((m) => m.rsvpStatus === "declined").length,
+    pending: inPerson.filter((m) => m.rsvpStatus === "pending").length,
     confirmedPax: attending.length,
-    inPersonPax: attending.filter((m) => !m.isOnline).length,
-    onlinePax: attending.filter((m) => m.isOnline).length,
+    inPersonPax: attending.length,
+    onlinePax: online.length,
     people: allMembers.length,
-    inPersonListed: allMembers.filter((m) => !m.isOnline).length,
-    onlineListed: allMembers.filter((m) => m.isOnline).length,
+    inPersonListed: inPerson.length,
+    onlineListed: online.length,
     paidTotalPhp,
   };
 }

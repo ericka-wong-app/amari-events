@@ -190,28 +190,32 @@ function GroupDetail({ group, pending, run, onBack, msg }: {
                   <button onClick={() => setEditId(m.id)} className="text-xs font-semibold text-rose-deep">Edit</button>
                 </div>
               </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <span className="text-[0.58rem] uppercase tracking-wide text-ink-soft">RSVP</span>
-                {(["attending", "declined", "pending"] as const).map((st) => (
-                  <button key={st} disabled={pending}
-                    onClick={() => run(() => setPersonRsvp(m.id, st, st === "attending" ? (m.attendance === "reception" ? "reception" : "both") : null))}
-                    className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${
-                      m.rsvpStatus === st
-                        ? st === "attending" ? "bg-sage-deep text-white" : st === "declined" ? "bg-rose text-white" : "bg-ink-soft text-white"
-                        : "border border-blush-2 text-ink-soft"
-                    }`}>
-                    {st === "attending" ? "Attending" : st === "declined" ? "Declined" : "Pending"}
-                  </button>
-                ))}
-                {m.rsvpStatus === "attending" && (
-                  <select value={m.attendance ?? "both"} disabled={pending}
-                    onChange={(e) => run(() => setPersonRsvp(m.id, "attending", e.target.value as "both" | "reception"))}
-                    className="rounded border border-blush-2 bg-white px-1 py-0.5 text-[0.65rem]">
-                    <option value="both">Both</option>
-                    <option value="reception">Reception only</option>
-                  </select>
-                )}
-              </div>
+              {m.isOnline ? (
+                <p className="mt-1.5 text-[0.65rem] text-ink-soft">Abroad — counted out, no RSVP needed</p>
+              ) : (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[0.58rem] uppercase tracking-wide text-ink-soft">RSVP</span>
+                  {(["attending", "declined", "pending"] as const).map((st) => (
+                    <button key={st} disabled={pending}
+                      onClick={() => run(() => setPersonRsvp(m.id, st, st === "attending" ? (m.attendance === "reception" ? "reception" : "both") : null))}
+                      className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${
+                        m.rsvpStatus === st
+                          ? st === "attending" ? "bg-sage-deep text-white" : st === "declined" ? "bg-rose text-white" : "bg-ink-soft text-white"
+                          : "border border-blush-2 text-ink-soft"
+                      }`}>
+                      {st === "attending" ? "Attending" : st === "declined" ? "Declined" : "Pending"}
+                    </button>
+                  ))}
+                  {m.rsvpStatus === "attending" && (
+                    <select value={m.attendance ?? "both"} disabled={pending}
+                      onChange={(e) => run(() => setPersonRsvp(m.id, "attending", e.target.value as "both" | "reception"))}
+                      className="rounded border border-blush-2 bg-white px-1 py-0.5 text-[0.65rem]">
+                      <option value="both">Both</option>
+                      <option value="reception">Reception only</option>
+                    </select>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           {group.members.length === 0 && <p className="text-sm text-ink-soft">No people yet.</p>}

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import * as api from "./actions";
 import type { Pass } from "./actions";
@@ -15,13 +15,14 @@ const QUESTIONS = [
   "What is your favorite color?",
 ];
 
-type Selected = { id: string; displayName: string; groupName: string | null; hasPin: boolean; securityQuestion: string | null };
+type Selected = { id: string; displayName: string; groupName: string | null; isOnline: boolean; hasPin: boolean; securityQuestion: string | null };
 
 const field = "mt-1 w-full rounded-2xl border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const labelCls = "mt-3 block text-left text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-soft";
 
-export default function RsvpFlow({ initialPass }: { initialPass: Pass | null }) {
+export default function RsvpFlow({ initialPass, onPassChange }: { initialPass: Pass | null; onPassChange?: (p: Pass | null) => void }) {
   const [pass, setPass] = useState<Pass | null>(initialPass);
+  useEffect(() => { onPassChange?.(pass); }, [pass, onPassChange]);
   const [editing, setEditing] = useState(false);
   const [sel, setSel] = useState<Selected | null>(null);
   const [burst, setBurst] = useState(0);
@@ -66,6 +67,19 @@ export default function RsvpFlow({ initialPass }: { initialPass: Pass | null }) 
       ) : pass ? (
         <PassCard pass={pass} onEdit={() => { setError(null); setEditing(true); }}
           onLogout={() => run(async () => { await api.logout(); fullReset(); })} />
+      ) : sel && sel.isOnline ? (
+        <Card>
+          <BackButton onClick={() => { setSel(null); setError(null); }} />
+          <div className="text-4xl">🌏</div>
+          <h2 className="mt-1 font-script text-4xl text-rose-deep">{sel.displayName}</h2>
+          <FloralDivider className="mt-3" />
+          <p className="mt-4 text-sm leading-relaxed text-ink">
+            We know you&apos;re far away, but you&apos;re close to our hearts. 💕 We would have loved to have you here for
+            Amari&apos;s baptism — please know you&apos;re in our thoughts, celebrating with us in spirit from abroad.
+          </p>
+          <p className="mt-3 text-sm text-ink-soft">No RSVP needed — we&apos;ve got you. Sending all our love. 🎀</p>
+          <p className="mt-6 text-center text-xs text-ink-soft"><Link href="/" className="underline">← Back to the invitation</Link></p>
+        </Card>
       ) : sel ? (
         <Card>
           <BackButton onClick={() => { setSel(null); setError(null); setPin(""); setForgot(false); }} />

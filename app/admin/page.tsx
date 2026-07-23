@@ -66,11 +66,10 @@ export default async function AdminDashboard() {
         <Tile label="Declined" value={s.declined} />
         <Tile label="Pending" value={s.pending} />
       </div>
-      <p className="mt-5 text-[0.68rem] font-semibold uppercase tracking-wide text-ink-soft">Confirmed head count (pax)</p>
-      <div className="mt-2 grid grid-cols-3 gap-3">
-        <Tile label="Total pax" value={s.confirmedPax} accent />
-        <Tile label="In-person" value={s.inPersonPax} />
-        <Tile label="Online" value={s.onlinePax} />
+      <p className="mt-5 text-[0.68rem] font-semibold uppercase tracking-wide text-ink-soft">Head count</p>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        <Tile label="Coming (in-person)" value={s.confirmedPax} accent />
+        <Tile label="Online (abroad)" value={s.onlinePax} />
       </div>
 
       <p className="mt-5 text-[0.68rem] font-semibold uppercase tracking-wide text-ink-soft">People listed</p>

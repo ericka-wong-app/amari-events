@@ -32,13 +32,14 @@ export async function search(query: string): Promise<SearchHit[]> {
 export async function getGuest(id: string): Promise<{
   displayName: string;
   groupName: string | null;
+  isOnline: boolean;
   hasPin: boolean;
   securityQuestion: string | null;
 } | null> {
   const mp = await getMemberPass(id);
   if (!mp) return null;
   const auth = await getAuthStatus(id);
-  return { displayName: mp.memberName, groupName: mp.group.name, hasPin: auth.hasPin, securityQuestion: auth.securityQuestion };
+  return { displayName: mp.memberName, groupName: mp.group.name, isOnline: mp.isOnline, hasPin: auth.hasPin, securityQuestion: auth.securityQuestion };
 }
 
 export async function setPin(id: string, pin: string, question: string, answer: string): Promise<Result> {
