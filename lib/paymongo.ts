@@ -39,7 +39,9 @@ export async function createCheckoutSession(input: CheckoutInput): Promise<Check
     // Required by PayMongo. Methods only appear at checkout if they're enabled
     // on the account (Settings → Payment Methods). Configurable via env so you
     // can adjust without a code change.
-    payment_method_types: (process.env.PAYMONGO_METHODS ?? "card,gcash,paymaya")
+    // qrph is the account's active method today; gcash/card auto-appear once
+    // activated in PayMongo. Inactive methods listed here are simply ignored.
+    payment_method_types: (process.env.PAYMONGO_METHODS ?? "qrph,gcash,card,paymaya")
       .split(",")
       .map((m) => m.trim())
       .filter(Boolean),
