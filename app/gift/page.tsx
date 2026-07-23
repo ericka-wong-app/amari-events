@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import GiveForm from "./GiveForm";
 import FundBar from "../components/FundBar";
 import FloatingHearts from "../components/FloatingHearts";
-import content from "../content";
 import { getPaidTotal } from "@/lib/fund";
+import { getFund } from "@/lib/gift-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export default async function GiftPage() {
   } catch {
     raised = 0;
   }
-  const f = content.gift.fund;
+  const f = await getFund();
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center justify-center gap-5 px-6 py-14">
       <FloatingHearts />

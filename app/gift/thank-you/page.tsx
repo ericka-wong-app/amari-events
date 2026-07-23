@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getContributionByReference, markContributionPaid, getPaidTotal } from "@/lib/fund";
+import { getFund } from "@/lib/gift-admin";
 import { isCheckoutPaid } from "@/lib/paymongo";
 import FloatingHearts from "../../components/FloatingHearts";
 import FundBar from "../../components/FundBar";
 import { RibbonBow, FloralDivider } from "../../components/Decor";
-import content from "../../content";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Thank you · Amari's Baptism" };
@@ -46,7 +46,7 @@ export default async function ThankYou({
   } catch {
     raised = 0;
   }
-  const f = content.gift.fund;
+  const f = await getFund();
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center justify-center gap-5 px-6 py-14 text-center">
