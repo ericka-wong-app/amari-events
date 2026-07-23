@@ -15,13 +15,13 @@ export const content = {
       "Celebrate this meaningful milestone with us as we gather with family and friends to witness this special occasion. Your presence will make this day even more memorable.",
   },
   ceremony: {
-    title: "The Ceremony",
+    title: "Baptism Ceremony",
     venue: "St. Benedict Parish",
     address: "Ayala Westgrove, Santa Rosa, Laguna",
     time: "2:00 PM",
   },
   reception: {
-    title: "The Reception",
+    title: "Reception",
     venue: "Okairi",
     address: "B2 L10 Phase 1, La Joya Subd., Brgy. Dila, Santa Rosa, Laguna",
     time: "4:00 PM",

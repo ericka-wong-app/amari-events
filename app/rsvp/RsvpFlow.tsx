@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import * as api from "./actions";
 import type { Pass } from "./actions";
 import type { SearchHit } from "@/lib/guests";
 import Confetti from "../components/Confetti";
 import { FloralDivider } from "../components/Decor";
+import content from "../content";
 
 const QUESTIONS = [
   "What city were you born in?",
@@ -20,14 +21,27 @@ type Selected = { id: string; displayName: string; groupName: string | null; isO
 const field = "mt-1 w-full rounded-2xl border border-blush-2 bg-white px-3 py-2 text-sm outline-none focus:border-rose";
 const labelCls = "mt-3 block text-left text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-soft";
 
-export default function RsvpFlow({ initialPass, onPassChange }: { initialPass: Pass | null; onPassChange?: (p: Pass | null) => void }) {
+export default function RsvpFlow({ initialPass, onPassChange, initialInviteToken }: { initialPass: Pass | null; onPassChange?: (p: Pass | null) => void; initialInviteToken?: string | null }) {
   const [pass, setPass] = useState<Pass | null>(initialPass);
   useEffect(() => { onPassChange?.(pass); }, [pass, onPassChange]);
   const [editing, setEditing] = useState(false);
   const [sel, setSel] = useState<Selected | null>(null);
+  const inviteHandled = useRef(false);
   const [burst, setBurst] = useState(0);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Opened via a shared invite link: jump straight to this person's PIN setup.
+  useEffect(() => {
+    if (inviteHandled.current || !initialInviteToken || initialPass) return;
+    inviteHandled.current = true;
+    start(async () => {
+      const g = await api.getInvite(initialInviteToken);
+      if (g) setSel({ id: g.id, displayName: g.displayName, groupName: g.groupName, isOnline: g.isOnline, hasPin: g.hasPin, securityQuestion: g.securityQuestion });
+    });
+  }, [initialInviteToken, initialPass]);
+
+  const refreshPass = () => start(async () => { const p = await api.myPass(); if (p) setPass(p); });
 
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[] | null>(null);
@@ -65,19 +79,30 @@ export default function RsvpFlow({ initialPass, onPassChange }: { initialPass: P
           })}
         />
       ) : pass ? (
-        <PassCard pass={pass} onEdit={() => { setError(null); setEditing(true); }}
-          onLogout={() => run(async () => { await api.logout(); fullReset(); })} />
+        <>
+          <PassCard pass={pass} onEdit={() => { setError(null); setEditing(true); }}
+            onLogout={() => run(async () => { await api.logout(); fullReset(); })} />
+          <GroupPanel meId={pass.pass.memberId} onChanged={refreshPass} />
+        </>
       ) : sel && sel.isOnline ? (
         <Card>
           <BackButton onClick={() => { setSel(null); setError(null); }} />
           <div className="text-4xl">🌏</div>
+          <p className="mt-2 text-[0.6rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/70">Celebrating from afar</p>
           <h2 className="mt-1 font-script text-4xl text-rose-deep">{sel.displayName}</h2>
           <FloralDivider className="mt-3" />
           <p className="mt-4 text-sm leading-relaxed text-ink">
-            We know you&apos;re far away, but you&apos;re close to our hearts. 💕 We would have loved to have you here for
-            Amari&apos;s baptism — please know you&apos;re in our thoughts, celebrating with us in spirit from abroad.
+            We know you&apos;re far away, but you&apos;re right here in our hearts. 💕 On <strong className="text-rose-deep">{content.dateLong}</strong>, as
+            we gather for {content.celebrantFirst}&apos;s baptism, we&apos;ll be thinking of you and wishing you were beside us.
           </p>
-          <p className="mt-3 text-sm text-ink-soft">No RSVP needed — we&apos;ve got you. Sending all our love. 🎀</p>
+          <div className="mt-4 rounded-2xl bg-blush/40 px-4 py-3 text-left text-sm">
+            <p className="font-semibold text-rose-deep">You&apos;re part of the day 🕊️</p>
+            <p className="mt-1 leading-relaxed text-ink-soft">
+              We&apos;ll send you the livestream link so you can watch the ceremony live and celebrate with us in real time.
+              No RSVP needed — we&apos;ve already saved you a place in spirit.
+            </p>
+          </div>
+          <p className="mt-4 text-sm text-ink-soft">Sending all our love across the miles. 🎀</p>
           <p className="mt-6 text-center text-xs text-ink-soft"><Link href="/" className="underline">← Back to the invitation</Link></p>
         </Card>
       ) : sel ? (
@@ -175,6 +200,14 @@ function RsvpForm({ pass, pending, error, onSubmit, onCancel }: {
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-rose-deep/75">RSVP</p>
       <h2 className="mt-1 font-script text-4xl text-rose-deep">{p.memberName}</h2>
       {p.group.name && <p className="mt-1 text-xs text-ink-soft">{p.group.name} invite{others.length > 0 ? ` · with ${others.join(", ")}` : ""}</p>}
+
+      {p.godparentRole && (
+        <div className="mt-3 rounded-2xl border border-rose/40 bg-gradient-to-r from-blush/70 to-white px-4 py-3">
+          <p className="text-[0.58rem] font-semibold uppercase tracking-[0.26em] text-rose-deep/70">A special role</p>
+          <p className="mt-0.5 font-script text-2xl text-rose-deep">You&apos;re Amari&apos;s {p.godparentRole} 🕊️</p>
+        </div>
+      )}
+
       <p className="mt-3 rounded-2xl bg-blush/40 px-4 py-2 text-sm text-ink">
         {p.isOnline ? "You're joining online from abroad 🌏" : "This is your own RSVP — everyone in your group answers for themselves."}
       </p>
@@ -219,6 +252,7 @@ function PassCard({ pass, onEdit, onLogout }: { pass: Pass; onEdit: () => void; 
       <FloralDivider className="mt-3" />
 
       <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
+        {p.godparentRole && <Badge>🕊️ {p.godparentRole}</Badge>}
         <Badge>{attending ? "Attending" : declined ? "Not attending" : "RSVP pending"}</Badge>
         {p.isOnline ? <Badge>Joining online</Badge> : (<>{attending && attLabel && <Badge>{attLabel}</Badge>}{p.group.tableNumber && <Badge>Table {p.group.tableNumber}</Badge>}</>)}
       </div>
@@ -249,4 +283,91 @@ function PassCard({ pass, onEdit, onLogout }: { pass: Pass; onEdit: () => void; 
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border border-blush-2 bg-blush/60 px-3 py-1 font-semibold text-rose-deep">{children}</span>;
+}
+
+function memberStatusLabel(m: api.GroupMemberRsvp): string {
+  if (m.isOnline) return "Abroad — celebrating online 🌏";
+  if (m.rsvpStatus === "attending") return m.attendance === "reception" ? "Coming · Reception only" : "Coming · Ceremony + Reception";
+  if (m.rsvpStatus === "declined") return "Not coming";
+  return "No response yet";
+}
+
+function GroupPanel({ meId, onChanged }: { meId: string; onChanged?: () => void }) {
+  const [group, setGroup] = useState<api.MyGroup | null>(null);
+  const [pending, start] = useTransition();
+  const [copied, setCopied] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => { start(async () => setGroup(await api.myGroup())); }, []);
+
+  function apply(fn: () => Promise<{ ok: true; group: api.MyGroup } | { ok: false; error: string }>) {
+    setMsg(null);
+    start(async () => {
+      try {
+        const r = await fn();
+        if (r.ok) { setGroup(r.group); onChanged?.(); }
+        else setMsg(r.error);
+      } catch { setMsg("Something went wrong. Please try again."); }
+    });
+  }
+  const setFor = (id: string, status: "attending" | "declined", attendance: "both" | "reception") =>
+    apply(() => api.submitRsvpFor(id, status, attendance));
+  const rsvpAll = () => apply(() => api.submitRsvpAll("attending", "both"));
+
+  function copyLink(token: string, id: string) {
+    const url = `${window.location.origin}/?i=${encodeURIComponent(token)}`;
+    navigator.clipboard?.writeText(url)
+      .then(() => { setCopied(id); setTimeout(() => setCopied(null), 1600); })
+      .catch(() => setMsg("Couldn't copy — long-press the link to copy it manually."));
+  }
+
+  if (!group || group.members.length <= 1) return null;
+
+  const chip = (active: boolean) =>
+    `rounded-full border px-3 py-1 text-xs font-semibold transition ${active ? "border-rose bg-rose text-white" : "border-blush-2 bg-white text-rose-deep"}`;
+
+  return (
+    <div className="anim-fade-up mx-auto mt-5 max-w-md rounded-[26px] border border-blush-2 bg-white/70 px-6 py-6 text-left shadow-[0_20px_50px_-30px_rgba(183,110,125,0.6)]">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-display text-xl italic text-rose-deep">Your group</h3>
+        {group.groupName && <span className="text-xs text-ink-soft">{group.groupName}</span>}
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+        RSVP for yourself, for anyone here, or for everyone at once. Send each person their private link so they can set
+        their own PIN — no name search needed.
+      </p>
+
+      <button onClick={rsvpAll} disabled={pending}
+        className="hover-lift mt-3 w-full rounded-full bg-rose px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_26px_-16px_rgba(183,110,125,0.9)] disabled:opacity-60">
+        Everyone&apos;s coming · Ceremony + Reception
+      </button>
+
+      <div className="mt-4 space-y-2">
+        {group.members.map((m) => (
+          <div key={m.id} className="rounded-2xl border border-blush-2 bg-white px-3.5 py-3">
+            <p className="text-sm font-semibold text-ink">
+              {m.name}{m.id === meId ? " (you)" : ""}
+              {m.godparentRole && <span className="ml-1 text-rose-deep">· {m.godparentRole} 🕊️</span>}
+            </p>
+            <p className="mt-0.5 text-xs text-ink-soft">{memberStatusLabel(m)}</p>
+            {!m.isOnline && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <button onClick={() => setFor(m.id, "attending", "both")} disabled={pending}
+                  className={chip(m.rsvpStatus === "attending" && m.attendance !== "reception")}>Coming</button>
+                <button onClick={() => setFor(m.id, "attending", "reception")} disabled={pending}
+                  className={chip(m.rsvpStatus === "attending" && m.attendance === "reception")}>Reception only</button>
+                <button onClick={() => setFor(m.id, "declined", "both")} disabled={pending}
+                  className={chip(m.rsvpStatus === "declined")}>Can&apos;t</button>
+                <button onClick={() => copyLink(m.inviteToken, m.id)}
+                  className="ml-auto rounded-full border border-blush-2 bg-white px-3 py-1 text-xs font-semibold text-rose-deep">
+                  {copied === m.id ? "Copied ✓" : "Copy link"}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {msg && <p className="mt-3 text-sm text-rose-deep">{msg}</p>}
+    </div>
+  );
 }

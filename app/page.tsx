@@ -3,16 +3,19 @@ import FloatingHearts from "./components/FloatingHearts";
 import GuestShell from "./components/GuestShell";
 import Hero from "./components/Hero";
 import Details from "./components/Details";
-import Godparents from "./components/Godparents";
 import Directions from "./components/Directions";
 import GiftsTab from "./components/GiftsTab";
 import { myPass, type Pass } from "./rsvp/actions";
 import { getPaidTotal } from "@/lib/fund";
 import { getFund, listGiftItems, type GiftItem } from "@/lib/gift-admin";
+import { getEventDetails } from "@/lib/event-details";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ i?: string | string[] }> }) {
+  const sp = await searchParams;
+  const inviteToken = Array.isArray(sp.i) ? sp.i[0] : sp.i ?? null;
+
   let initialPass: Pass | null = null;
   try {
     initialPass = await myPass();
@@ -26,6 +29,7 @@ export default async function Home() {
     raised = 0;
   }
   const fund = await getFund();
+  const details = await getEventDetails();
   let items: GiftItem[] = [];
   try {
     items = await listGiftItems();
@@ -39,11 +43,11 @@ export default async function Home() {
       <IntroReveal />
       <GuestShell
         initialPass={initialPass}
+        inviteToken={inviteToken}
         hero={<Hero />}
         details={
           <>
-            <Details />
-            <Godparents />
+            <Details details={details} />
             <Directions />
           </>
         }

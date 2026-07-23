@@ -20,14 +20,16 @@ export default function GuestShell({
   hero,
   details,
   gifts,
+  inviteToken,
 }: {
   initialPass: Pass | null;
   hero: React.ReactNode;
   details: React.ReactNode;
   gifts: React.ReactNode;
+  inviteToken?: string | null;
 }) {
   const [pass, setPass] = useState<Pass | null>(initialPass);
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTab] = useState<Tab>(inviteToken && !initialPass ? "rsvp" : "home");
   const loggedIn = Boolean(pass);
   const onPassChange = useCallback((p: Pass | null) => setPass(p), []);
 
@@ -58,7 +60,7 @@ export default function GuestShell({
 
         <div className={tab === "rsvp" ? "" : "hidden"}>
           <section className="px-6 py-12">
-            <RsvpFlow initialPass={pass} onPassChange={onPassChange} />
+            <RsvpFlow initialPass={pass} onPassChange={onPassChange} initialInviteToken={inviteToken} />
           </section>
         </div>
 

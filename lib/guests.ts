@@ -6,10 +6,12 @@ export type AuthStatus = { hasPin: boolean; securityQuestion: string | null };
 export type Attendance = "both" | "reception" | "ceremony" | null;
 
 // Each PERSON has their own RSVP + QR. The group is context (who you're with).
+export type GodparentRole = "Ninong" | "Ninang" | null;
 export type MemberPass = {
   memberId: string;
   memberName: string;
   isOnline: boolean;
+  godparentRole: GodparentRole;
   rsvpStatus: "attending" | "declined" | "pending";
   attendance: Attendance;
   group: { name: string | null; tableNumber: string | null; members: string[] };
@@ -83,7 +85,7 @@ export async function getMemberPass(memberId: string): Promise<MemberPass | null
   const sb = supabaseAdmin();
   const { data: m } = await sb
     .from("guests")
-    .select("id, display_name, group_id, is_online, rsvp_status, attendance, groups(name, table_number)")
+    .select("id, display_name, group_id, is_online, godparent_role, rsvp_status, attendance, groups(name, table_number)")
     .eq("id", memberId)
     .maybeSingle();
   if (!m) return null;
@@ -93,10 +95,12 @@ export async function getMemberPass(memberId: string): Promise<MemberPass | null
     const { data: mem } = await sb.from("guests").select("display_name").eq("group_id", m.group_id).order("display_name");
     members = (mem ?? []).map((x) => x.display_name);
   }
+  const role = m.godparent_role === "Ninong" || m.godparent_role === "Ninang" ? m.godparent_role : null;
   return {
     memberId: m.id,
     memberName: m.display_name,
     isOnline: Boolean(m.is_online),
+    godparentRole: role,
     rsvpStatus: (m.rsvp_status as MemberPass["rsvpStatus"]) ?? "pending",
     attendance: (m.attendance as Attendance) ?? null,
     group: { name: g?.name ?? null, tableNumber: g?.table_number ?? null, members },
@@ -118,4 +122,79 @@ export async function setMemberRsvp(
     })
     .eq("id", memberId);
   if (error) throw new Error(error.message);
+}
+
+// --- Group roster (a logged-in member can see & help their group) ---
+export type GroupMemberView = {
+  id: string;
+  name: string;
+  isOnline: boolean;
+  godparentRole: GodparentRole;
+  rsvpStatus: "attending" | "declined" | "pending";
+  attendance: Attendance;
+};
+
+type GroupMemberRow = {
+  id: string;
+  display_name: string;
+  is_online: boolean | null;
+  godparent_role: string | null;
+  rsvp_status: string | null;
+  attendance: string | null;
+  group_id: string | null;
+};
+
+function toGroupMemberView(r: GroupMemberRow): GroupMemberView {
+  const role = r.godparent_role === "Ninong" || r.godparent_role === "Ninang" ? r.godparent_role : null;
+  return {
+    id: r.id,
+    name: r.display_name,
+    isOnline: Boolean(r.is_online),
+    godparentRole: role,
+    rsvpStatus: (r.rsvp_status as GroupMemberView["rsvpStatus"]) ?? "pending",
+    attendance: (r.attendance as Attendance) ?? null,
+  };
+}
+
+const GROUP_MEMBER_COLS = "id, display_name, is_online, godparent_role, rsvp_status, attendance, group_id";
+
+export async function getGroupOfMember(
+  memberId: string
+): Promise<{ groupName: string | null; members: GroupMemberView[] } | null> {
+  const sb = supabaseAdmin();
+  const { data: me } = await sb
+    .from("guests")
+    .select("group_id, groups(name)")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (!me) return null;
+  const groupName = one(me.groups as { name: string } | { name: string }[] | null)?.name ?? null;
+
+  const q = sb.from("guests").select(GROUP_MEMBER_COLS);
+  const { data } = me.group_id
+    ? await q.eq("group_id", me.group_id).order("display_name")
+    : await q.eq("id", memberId);
+  return { groupName, members: ((data ?? []) as GroupMemberRow[]).map(toGroupMemberView) };
+}
+
+// Security: only let a logged-in member act on people in their own group.
+export async function membersInSameGroup(callerId: string, targetId: string): Promise<boolean> {
+  if (callerId === targetId) return true;
+  const sb = supabaseAdmin();
+  const { data } = await sb.from("guests").select("id, group_id").in("id", [callerId, targetId]);
+  if (!data || data.length < 2) return false;
+  const caller = data.find((x) => x.id === callerId);
+  const target = data.find((x) => x.id === targetId);
+  return Boolean(caller?.group_id && caller.group_id === target?.group_id);
+}
+
+// Non-online people in the caller's group (for "RSVP for everyone").
+export async function groupInPersonMemberIds(memberId: string): Promise<string[]> {
+  const sb = supabaseAdmin();
+  const { data: me } = await sb.from("guests").select("group_id").eq("id", memberId).maybeSingle();
+  if (!me?.group_id) return [memberId];
+  const { data } = await sb.from("guests").select("id, is_online").eq("group_id", me.group_id);
+  return ((data ?? []) as { id: string; is_online: boolean | null }[])
+    .filter((m) => !m.is_online)
+    .map((m) => m.id);
 }
